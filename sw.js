@@ -1,5 +1,5 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v9";
+const VERSION = "fb-live-v10";
 const SHELL = [
   "./",
   "./index.html",

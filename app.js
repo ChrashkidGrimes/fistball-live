@@ -277,10 +277,11 @@ function renderStandings() {
     html += renderCrossTable(state.activeCategory);
   }
 
-  html += renderKnockout(state.activeCategory);
-
   if (!html) {
-    html = `<div class="empty">No data for this category yet — check the <b>Matches</b> tab.</div>`;
+    const ko = knockoutMatches(state.activeCategory).length > 0;
+    html = ko
+      ? `<div class="empty">This category is a knock-out stage — no group table.<br>See the <b>Bracket</b> tab.</div>`
+      : `<div class="empty">No data for this category yet — check the <b>Matches</b> tab.</div>`;
   }
 
   host.innerHTML = html;
@@ -399,11 +400,14 @@ function bracketNode(m) {
   const aWin = isFinished(m) && m.setsA > m.setsB;
   const bWin = isFinished(m) && m.setsB > m.setsA;
   const live = isLive(m);
-  const side = (name, score, win) =>
-    `<div class="bteam ${win ? "win" : ""}"><span class="bn">${esc(name)}</span><span class="bs">${played ? score : ""}</span></div>`;
+  const side = (name, sets, pts, win) =>
+    `<div class="bteam ${win ? "win" : ""}">
+       <span class="bn">${esc(name)}</span>
+       <span class="bsc"><span class="bs">${played ? sets : ""}</span><span class="bp">${played ? pts : ""}</span></span>
+     </div>`;
   return `<div class="bmatch ${live ? "live" : ""}">
-      ${side(m.teamA, m.setsA, aWin)}
-      ${side(m.teamB, m.setsB, bWin)}
+      ${side(m.teamA, m.setsA, m.pointsA, aWin)}
+      ${side(m.teamB, m.setsB, m.pointsB, bWin)}
     </div>`;
 }
 
@@ -422,7 +426,7 @@ function renderKnockout(category) {
     }
   }
 
-  let html = `<p class="section-title">Knockout</p>`;
+  let html = "";
 
   // Medal-path tree
   const cols = [];
@@ -552,8 +556,10 @@ function setView(view) {
   state.activeView = view;
   localStorage.setItem("fb_view", view);
   $("tabStandings").classList.toggle("is-active", view === "standings");
+  $("tabBracket").classList.toggle("is-active", view === "bracket");
   $("tabMatches").classList.toggle("is-active", view === "matches");
   $("standingsView").hidden = view !== "standings";
+  $("bracketView").hidden = view !== "bracket";
   $("matchesView").hidden = view !== "matches";
   renderActiveView();
 }
@@ -561,7 +567,15 @@ function setView(view) {
 function renderActiveView() {
   if (!state.activeCategory) return;
   if (state.activeView === "standings") renderStandings();
+  else if (state.activeView === "bracket") renderBracket();
   else renderMatches();
+}
+
+function renderBracket() {
+  const host = $("bracket");
+  const html = renderKnockout(state.activeCategory);
+  host.innerHTML = html ||
+    `<div class="empty">No knockout stage for this category.<br>Check <b>Standings</b> or <b>Matches</b>.</div>`;
 }
 
 /* ---------------------- Data loading ---------------------- */
@@ -691,6 +705,7 @@ if ("serviceWorker" in navigator) {
 /* ---------------------- Boot ---------------------- */
 
 $("tabStandings").onclick = () => setView("standings");
+$("tabBracket").onclick = () => setView("bracket");
 $("tabMatches").onclick = () => setView("matches");
 $("refreshBtn").onclick = () => load(true);
 setView(state.activeView);

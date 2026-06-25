@@ -493,7 +493,9 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 .bteam + .bteam { border-top: 1px dashed var(--line); }
 .bteam .bn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .bteam.win .bn { color: var(--win); font-weight: 700; }
-.bteam .bs { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bsc { flex: none; display: inline-flex; align-items: baseline; gap: 5px; }
+.bteam .bs { font-weight: 800; font-variant-numeric: tabular-nums; }
+.bteam .bp { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 14px; text-align: right; }
 
 /* Update available toast */
 .update-toast {
