@@ -13,10 +13,22 @@ const CONFIG = {
 
 // gviz CSV endpoint — works for any sheet shared as "anyone with the link can view".
 const DATA_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&gid=${CONFIG.gid}&_=`;
+// The Config tab is read by NAME, so the same app works for any event's sheet.
+const CONFIG_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Config&_=`;
 
 // Rounds that form a round-robin group stage (used to compute standings).
 const GROUP_ROUNDS = ["Qualification round", "WEC - Vorrunde"];
 const STATUS_VALUES = ["Not Started", "Starting", "In progress", "Finished"];
+
+// Scoring & tie-break rules — defaults follow the official IFA rule (art. 11):
+// win 2 / draw 1 / loss 0, then head-to-head set diff/quotient/point diff,
+// then the same across all group matches. Overridden by the sheet's Config tab.
+const DEFAULT_TIEBREAKERS = [
+  "H2H_SET_DIFF", "H2H_SET_RATIO", "H2H_POINT_DIFF",
+  "SET_DIFF", "SET_RATIO", "POINT_DIFF",
+];
+const DEFAULT_RULES = { pointTable: [], drawPoints: 1, tiebreakers: DEFAULT_TIEBREAKERS.slice() };
+const rules = () => state.rules || DEFAULT_RULES;
 
 // Category chips are grouped into two rows (Women, then Men) and ordered
 // within each row following this list (the order used in the sheet).
@@ -51,6 +63,7 @@ const state = {
   activeView: localStorage.getItem("fb_view") || "standings",
   matchFilter: "all",
   crossMode: localStorage.getItem("fb_cross") || "sets",
+  rules: null,
   lastUpdated: null,
 };
 
@@ -172,46 +185,131 @@ function isLive(m) { return m.status === "In progress" || m.status === "Starting
 
 /* ---------------------- Standings ---------------------- */
 
+// Tournament points a team earns from one finished match, via the Point Table.
+function matchPointsFor(m, mySets, oppSets) {
+  if (mySets === oppSets) return rules().drawPoints;          // draw
+  const win = mySets > oppSets;
+  const winSets = Math.max(mySets, oppSets), loseSets = Math.min(mySets, oppSets);
+  const row = rules().pointTable.find(
+    (t) => t.bestOf === m.bestOf && t.winSets === winSets && t.loseSets === loseSets);
+  if (row) return win ? row.winPts : row.losePts;
+  return win ? 2 : 0;                                          // fallback if table has no row
+}
+
+// Per-team set/ball-point stats over the given matches. A team's stats count
+// every match it appears in (the caller pre-filters to head-to-head matches
+// when a criterion is head-to-head only).
+function aggregate(teams, matches) {
+  const s = new Map(teams.map((t) => [t, { sw: 0, sl: 0, pf: 0, pa: 0, wins: 0 }]));
+  for (const m of matches) {
+    if (s.has(m.teamA)) {
+      const a = s.get(m.teamA);
+      a.sw += m.setsA; a.sl += m.setsB; a.pf += m.pointsA; a.pa += m.pointsB;
+      if (m.setsA > m.setsB) a.wins++;
+    }
+    if (s.has(m.teamB)) {
+      const b = s.get(m.teamB);
+      b.sw += m.setsB; b.sl += m.setsA; b.pf += m.pointsB; b.pa += m.pointsA;
+      if (m.setsB > m.setsA) b.wins++;
+    }
+  }
+  return s;
+}
+
+// Per-team value of one tie-break criterion (higher = better).
+function criterionValues(key, teams, games) {
+  const h2h = key.startsWith("H2H_");
+  const matches = h2h
+    ? games.filter((m) => teams.includes(m.teamA) && teams.includes(m.teamB))
+    : games;
+  const s = aggregate(teams, matches);
+  const ratio = (a, b) => (b > 0 ? a / b : a > 0 ? Infinity : 0);
+  const out = new Map();
+  for (const t of teams) {
+    const st = s.get(t);
+    let v = 0;
+    switch (key) {
+      case "H2H_SET_DIFF": case "SET_DIFF": v = st.sw - st.sl; break;
+      case "H2H_SET_RATIO": case "SET_RATIO": v = ratio(st.sw, st.sl); break;
+      case "H2H_POINT_DIFF": case "POINT_DIFF": v = st.pf - st.pa; break;
+      case "H2H_POINT_RATIO": case "POINT_RATIO": v = ratio(st.pf, st.pa); break;
+      case "WINS": v = st.wins; break;
+    }
+    out.set(t, v);
+  }
+  return out;
+}
+
+// Order teams tied on points using the criteria chain. Head-to-head criteria
+// are recomputed among whatever subset is still tied: when a criterion splits
+// the group, each subgroup restarts the chain (so "between the teams concerned"
+// always means the current subset). Terminates — subgroups strictly shrink.
+function breakTies(teams, chain, games) {
+  if (teams.length <= 1) return teams.slice();
+  for (const key of chain) {
+    const vals = criterionValues(key, teams, games);
+    const distinct = new Set([...vals.values()]);
+    if (distinct.size === 1) continue;                        // doesn't separate
+    const sorted = [...teams].sort((a, b) => vals.get(b) - vals.get(a) || a.localeCompare(b));
+    const out = [];
+    for (let i = 0; i < sorted.length;) {
+      let j = i + 1;
+      while (j < sorted.length && vals.get(sorted[j]) === vals.get(sorted[i])) j++;
+      const cluster = sorted.slice(i, j);
+      out.push(...(cluster.length > 1 ? breakTies(cluster, chain, games) : cluster));
+      i = j;
+    }
+    return out;
+  }
+  return [...teams].sort((a, b) => a.localeCompare(b));        // fully tied → lots (stable)
+}
+
 function computeStandings(category) {
-  const games = state.matches.filter(
+  const allGames = state.matches.filter(
     (m) => m.category === category &&
       GROUP_ROUNDS.includes(m.round) &&
       isRealTeam(m.teamA) && isRealTeam(m.teamB)
   );
-  if (!games.length) return null;
+  if (!allGames.length) return null;
+  const games = allGames.filter(isFinished);
 
   const tbl = new Map();
   const ensure = (name) => {
     if (!tbl.has(name)) tbl.set(name, {
-      team: name, played: 0, wins: 0, losses: 0,
+      team: name, played: 0, wins: 0, draws: 0, losses: 0,
       setsWon: 0, setsLost: 0, pointsFor: 0, pointsAgainst: 0, pts: 0,
     });
     return tbl.get(name);
   };
-
-  // Register all teams so even those who haven't played yet show up.
-  for (const g of games) { ensure(g.teamA); ensure(g.teamB); }
+  for (const g of allGames) { ensure(g.teamA); ensure(g.teamB); }
 
   for (const g of games) {
-    if (!isFinished(g)) continue;
     const a = ensure(g.teamA), b = ensure(g.teamB);
     a.played++; b.played++;
     a.setsWon += g.setsA; a.setsLost += g.setsB;
     b.setsWon += g.setsB; b.setsLost += g.setsA;
     a.pointsFor += g.pointsA; a.pointsAgainst += g.pointsB;
     b.pointsFor += g.pointsB; b.pointsAgainst += g.pointsA;
-    if (g.setsA > g.setsB) { a.wins++; b.losses++; a.pts += 2; }
-    else if (g.setsB > g.setsA) { b.wins++; a.losses++; b.pts += 2; }
+    a.pts += matchPointsFor(g, g.setsA, g.setsB);
+    b.pts += matchPointsFor(g, g.setsB, g.setsA);
+    if (g.setsA > g.setsB) { a.wins++; b.losses++; }
+    else if (g.setsB > g.setsA) { b.wins++; a.losses++; }
+    else { a.draws++; b.draws++; }
   }
 
-  const rows = [...tbl.values()];
-  rows.sort((x, y) =>
-    y.pts - x.pts ||
-    (y.setsWon - y.setsLost) - (x.setsWon - x.setsLost) ||
-    (y.pointsFor - y.pointsAgainst) - (x.pointsFor - x.pointsAgainst) ||
-    x.team.localeCompare(y.team)
-  );
-  return rows;
+  // Primary order by points; equal-points clusters resolved by the chain.
+  const byName = new Map([...tbl.values()].map((r) => [r.team, r]));
+  const order = [...tbl.values()].sort((x, y) => y.pts - x.pts || x.team.localeCompare(y.team));
+  const result = [];
+  for (let i = 0; i < order.length;) {
+    let j = i + 1;
+    while (j < order.length && order[j].pts === order[i].pts) j++;
+    const cluster = order.slice(i, j).map((r) => r.team);
+    const ranked = cluster.length > 1 ? breakTies(cluster, rules().tiebreakers, games) : cluster;
+    for (const name of ranked) result.push(byName.get(name));
+    i = j;
+  }
+  return result;
 }
 
 /* ---------------------- Rendering ---------------------- */
@@ -248,12 +346,13 @@ function renderStandings() {
 
   if (rows) {
     const anyPlayed = rows.some((r) => r.played > 0);
+    const showDraws = rows.some((r) => r.draws > 0);
     const qualifyCount = Math.min(2, rows.length); // highlight top 2
 
     html += `<p class="section-title">${esc(state.activeCategory)} · Group standings</p>`;
     html += `<div class="table-wrap"><table class="standings">
       <thead><tr>
-        <th>#</th><th class="team">Team</th><th>P</th><th>W</th><th>L</th>
+        <th>#</th><th class="team">Team</th><th>P</th><th>W</th>${showDraws ? "<th>D</th>" : ""}<th>L</th>
         <th>Sets</th><th>±</th><th>Pts</th>
       </tr></thead><tbody>`;
     rows.forEach((r, i) => {
@@ -264,6 +363,7 @@ function renderStandings() {
         <td class="team"><span class="team-name"><span class="flag">${flagFor(r.team)}</span>${esc(r.team)}</span></td>
         <td>${r.played}</td>
         <td>${r.wins}</td>
+        ${showDraws ? `<td>${r.draws}</td>` : ""}
         <td>${r.losses}</td>
         <td class="dim">${r.setsWon}-${r.setsLost}</td>
         <td class="${setDiff > 0 ? "" : "dim"}">${setDiff > 0 ? "+" : ""}${setDiff}</td>
@@ -593,20 +693,106 @@ function renderBracket() {
     `<div class="empty">No knockout stage for this category.<br>Check <b>Standings</b> or <b>Matches</b>.</div>`;
 }
 
+/* ---------------------- Rules from the Config tab ---------------------- */
+
+const TIEBREAK_ALIASES = {
+  H2H_SET_DIFF: "H2H_SET_DIFF", H2H_SET_DIFFERENCE: "H2H_SET_DIFF",
+  H2H_SET_RATIO: "H2H_SET_RATIO", H2H_SET_QUOTIENT: "H2H_SET_RATIO",
+  H2H_POINT_DIFF: "H2H_POINT_DIFF", H2H_POINT_DIFFERENCE: "H2H_POINT_DIFF",
+  H2H_POINT_RATIO: "H2H_POINT_RATIO", H2H_POINT_QUOTIENT: "H2H_POINT_RATIO",
+  SET_DIFF: "SET_DIFF", SET_DIFFERENCE: "SET_DIFF",
+  SET_RATIO: "SET_RATIO", SET_QUOTIENT: "SET_RATIO",
+  POINT_DIFF: "POINT_DIFF", POINT_DIFFERENCE: "POINT_DIFF",
+  POINT_RATIO: "POINT_RATIO", POINT_QUOTIENT: "POINT_RATIO",
+  WINS: "WINS",
+};
+const tbKey = (raw) => TIEBREAK_ALIASES[String(raw).trim().toUpperCase().replace(/[\s.\-]+/g, "_")] || null;
+
+// Parse the Config tab by scanning for labels (robust to layout changes).
+function parseRules(csvText) {
+  const out = { pointTable: [], drawPoints: 1, tiebreakers: DEFAULT_TIEBREAKERS.slice() };
+  let rows;
+  try { rows = parseCSV(csvText); } catch (_) { return out; }
+  const up = (s) => String(s || "").trim().toUpperCase().replace(/[\s.]+/g, "_");
+
+  // Point Table — find the BEST_OF header, read columns by name, rows until non-numeric.
+  for (let r = 0; r < rows.length; r++) {
+    const hdr = rows[r];
+    if (hdr.findIndex((c) => up(c) === "BEST_OF") === -1) continue;
+    const col = (...names) => hdr.findIndex((c) => names.includes(up(c)));
+    const cB = col("BEST_OF");
+    const cSV = col("SETS_VENCEDOR", "WINNER_SETS", "SETS_VENC");
+    const cSP = col("SETS_PERDEDOR", "LOSER_SETS", "SETS_PERD");
+    const cPV = col("PTS_VENCEDOR", "WINNER_PTS", "PTS_VENC", "POINTS_WINNER");
+    const cPP = col("PTS_PERDEDOR", "LOSER_PTS", "PTS_PERD", "POINTS_LOSER");
+    if (cSV < 0 || cSP < 0 || cPV < 0 || cPP < 0) break;
+    for (let k = r + 1; k < rows.length; k++) {
+      const bo = parseInt(String(rows[k][cB]).trim(), 10);
+      if (!Number.isFinite(bo)) break;
+      out.pointTable.push({
+        bestOf: bo, winSets: num(rows[k][cSV]), loseSets: num(rows[k][cSP]),
+        winPts: num(rows[k][cPV]), losePts: num(rows[k][cPP]),
+      });
+    }
+    break;
+  }
+
+  // DRAW_POINTS — labelled cell, value to its right.
+  for (let r = 0; r < rows.length && out.drawPoints === 1; r++) {
+    for (let c = 0; c < rows[r].length; c++) {
+      if (["DRAW_POINTS", "DRAW", "EMPATE", "PONTOS_EMPATE"].includes(up(rows[r][c]))) {
+        for (let c2 = c + 1; c2 < rows[r].length; c2++) {
+          const v = String(rows[r][c2]).trim();
+          if (v !== "") { const n = parseFloat(v); if (Number.isFinite(n)) out.drawPoints = n; break; }
+        }
+      }
+    }
+  }
+
+  // TIEBREAKERS — labelled cell, ordered list read downward in the same column.
+  for (let r = 0; r < rows.length; r++) {
+    const c = rows[r].findIndex((x) => ["TIEBREAKERS", "TIEBREAKER", "DESEMPATE", "DESEMPATES"].includes(up(x)));
+    if (c === -1) continue;
+    const list = [];
+    for (let k = r + 1; k < rows.length; k++) {
+      const raw = String(rows[k][c]).trim();
+      if (raw === "") break;
+      const key = tbKey(raw);
+      if (key) list.push(key);
+    }
+    if (list.length) out.tiebreakers = list;
+    break;
+  }
+  return out;
+}
+
 /* ---------------------- Data loading ---------------------- */
 
 async function load(showSpin) {
   const btn = $("refreshBtn");
   if (showSpin) btn.classList.add("spin");
   try {
-    const res = await fetch(DATA_URL + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const text = await res.text();
+    const [resR, cfgR] = await Promise.allSettled([
+      fetch(DATA_URL + Date.now(), { cache: "no-store" }),
+      fetch(CONFIG_URL + Date.now(), { cache: "no-store" }),
+    ]);
+    // Config is optional — fall back to defaults / cache if it fails.
+    if (cfgR.status === "fulfilled" && cfgR.value.ok) {
+      const cfgText = await cfgR.value.text();
+      state.rules = parseRules(cfgText);
+      try { localStorage.setItem("fb_rules", cfgText); } catch (_) {}
+    } else if (!state.rules) {
+      const cachedCfg = localStorage.getItem("fb_rules");
+      state.rules = cachedCfg ? parseRules(cachedCfg) : DEFAULT_RULES;
+    }
+    if (resR.status !== "fulfilled" || !resR.value.ok) throw new Error("results fetch failed");
+    const text = await resR.value.text();
     applyData(text);
     cacheData(text);
     $("banner").hidden = true;
   } catch (err) {
     console.warn("Live fetch failed:", err);
+    if (!state.rules) state.rules = DEFAULT_RULES;
     const cached = localStorage.getItem("fb_cache");
     if (cached && !state.matches.length) applyData(cached);
     showBanner("Couldn't reach the live sheet — showing the last data loaded. Pull to refresh when back online.");

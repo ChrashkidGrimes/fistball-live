@@ -28,6 +28,31 @@ https://docs.google.com/spreadsheets/d/<SHEET_ID>/gviz/tq?tqx=out:csv&gid=<GID>
 This works **only while the sheet is shared as “Anyone with the link → Viewer”**
 (it currently is). No API key or login is required, and viewers never get edit access.
 
+## Scoring & tie-break rules (per-event, read from the `Config` tab)
+
+The app is event-agnostic: it reads the rules from the sheet's **`Config`** tab (by
+name), so a different event = a different sheet with its own rules, **no code change**.
+The parser scans for labels, so exact cell positions don't matter.
+
+- **Match points** — the existing **Point Table** (`BEST_OF, SETS_VENCEDOR,
+  SETS_PERDEDOR, PTS_VENCEDOR, PTS_PERDEDOR`). Each finished match looks up its
+  row by (best-of, winner sets, loser sets). This expresses flat win/loss (2/0),
+  per-set scoring (`PTS = sets won`), and score bonuses alike.
+- **Draws** — a cell labelled **`DRAW_POINTS`** with the value to its right
+  (default `1`). A finished match with equal sets is a draw.
+- **Tie-breakers** — a cell labelled **`TIEBREAKERS`** with an ordered list read
+  **downward** in the same column. Accepted tokens:
+  `H2H_SET_DIFF`, `H2H_SET_RATIO`, `H2H_POINT_DIFF`, `H2H_POINT_RATIO`,
+  `SET_DIFF`, `SET_RATIO`, `POINT_DIFF`, `POINT_RATIO`, `WINS`
+  (`H2H_` = only matches among the tied teams; `QUOTIENT` is accepted for `RATIO`).
+
+**Defaults if `Config` is absent or a setting is missing** — the official IFA rule
+(art. 11): win 2 / draw 1 / loss 0, then
+`H2H_SET_DIFF → H2H_SET_RATIO → H2H_POINT_DIFF → SET_DIFF → SET_RATIO → POINT_DIFF`,
+then drawing of lots (the app keeps a stable order). Head-to-head criteria are
+recomputed among whatever subset stays tied (so "between the teams concerned"
+is always honoured).
+
 Configuration lives at the top of [`app.js`](app.js):
 
 ```js
