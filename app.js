@@ -436,12 +436,17 @@ function renderKnockout(category) {
   if (cols.length) {
     html += `<div class="bracket">`;
     for (const [title, items, bronze] of cols) {
-      html += `<div class="bround"><div class="bround-title">${title}</div>`;
-      html += items.map(bracketNode).join("");
-      if (bronze && bronze.length) {
-        html += `<div class="bround-title bronze-title">Bronze</div>` + bronze.map(bracketNode).join("");
+      if (bronze !== undefined) {
+        // Final column: centred apex with the bronze match below it.
+        html += `<div class="bround"><div class="bround-title">${title}</div>
+          <div class="bround-cards bround-cards--center">
+            ${items.map(bracketNode).join("")}
+            ${bronze.length ? `<div class="bround-title bronze-title">Bronze</div>${bronze.map(bracketNode).join("")}` : ""}
+          </div></div>`;
+      } else {
+        html += `<div class="bround"><div class="bround-title">${title}</div>
+          <div class="bround-cards">${items.map(bracketNode).join("")}</div></div>`;
       }
-      html += `</div>`;
     }
     html += `</div>`;
   }
