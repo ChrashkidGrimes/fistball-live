@@ -341,7 +341,7 @@ function renderCrossTable(category) {
     for (const c of teams) {
       if (r === c) { html += `<td class="self"></td>`; continue; }
       const m = headToHead(category, r, c);
-      let cls = "np", txt = "–";
+      let cls = "np", txt = "–", dot = "";
       if (m) {
         const rowIsA = m.teamA === r;
         const rs = rowIsA ? m.setsA : m.setsB;
@@ -350,10 +350,16 @@ function renderCrossTable(category) {
         const op = rowIsA ? m.pointsB : m.pointsA;
         if (isFinished(m) || rs + os > 0) {
           txt = mode === "points" ? `${rp}:${op}` : `${rs}:${os}`;
-          cls = rs > os ? "win" : os > rs ? "loss" : "np";
+          if (!isFinished(m)) {
+            // game still in progress — show as live, not a final win/loss
+            cls = "live";
+            dot = `<span class="cell-dot" title="Live"></span>`;
+          } else {
+            cls = rs > os ? "win" : os > rs ? "loss" : "np";
+          }
         }
       }
-      html += `<td class="${cls}">${txt}</td>`;
+      html += `<td class="${cls}">${txt}${dot}</td>`;
     }
     html += `</tr>`;
   }

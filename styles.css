@@ -423,6 +423,17 @@ table.cross td.self { background: var(--bg-elev-2); }
 table.cross td.win { color: var(--win); font-weight: 700; }
 table.cross td.loss { color: var(--text); }
 table.cross td.np { color: var(--muted); opacity: 0.45; }
+table.cross td.live { color: var(--gold); font-weight: 700; }
+.cell-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  margin-left: 5px;
+  vertical-align: middle;
+  animation: blink 1.2s infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
 /* Update available toast */
 .update-toast {
