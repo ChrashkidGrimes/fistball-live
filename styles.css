@@ -360,6 +360,70 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
   opacity: 0.7;
 }
 
+/* Head-to-head cross table */
+.cross-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.cross-bar .section-title { margin: 0; }
+.cross-toggle { display: flex; gap: 6px; }
+.cross-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+.cross-wrap::-webkit-scrollbar { height: 8px; }
+.cross-wrap::-webkit-scrollbar-thumb { background: var(--bg-elev-2); border-radius: 8px; }
+table.cross {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: max-content;
+  min-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+table.cross th, table.cross td {
+  padding: 9px 11px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+table.cross tr:last-child td, table.cross tr:last-child th { border-bottom: none; }
+table.cross thead th {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.4;
+}
+table.cross thead th .flag { margin: 0; font-size: 14px; }
+table.cross .corner, table.cross .rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-elev);
+}
+table.cross thead .corner { z-index: 3; }
+table.cross .rowhead {
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  border-right: 2px solid var(--line);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.cross td.self { background: var(--bg-elev-2); }
+table.cross td.win { color: var(--win); font-weight: 700; }
+table.cross td.loss { color: var(--text); }
+table.cross td.np { color: var(--muted); opacity: 0.45; }
+
 /* Update available toast */
 .update-toast {
   position: fixed;

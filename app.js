@@ -50,6 +50,7 @@ const state = {
   activeCategory: localStorage.getItem("fb_category") || null,
   activeView: localStorage.getItem("fb_view") || "standings",
   matchFilter: "all",
+  crossMode: localStorage.getItem("fb_cross") || "sets",
   lastUpdated: null,
 };
 
@@ -275,7 +276,89 @@ function renderStandings() {
   if (!anyPlayed) {
     html += `<div class="empty">No matches completed yet — standings will fill in as results come in.</div>`;
   }
+
+  html += renderCrossTable(state.activeCategory);
+
   host.innerHTML = html;
+
+  host.querySelectorAll(".cross-toggle .chip").forEach((b) => {
+    b.onclick = () => {
+      state.crossMode = b.dataset.mode;
+      localStorage.setItem("fb_cross", b.dataset.mode);
+      renderStandings();
+    };
+  });
+}
+
+// Short codes for the cross-table column headers.
+const CODES = {
+  Austria: "AUT", Brazil: "BRA", Germany: "GER", Switzerland: "SUI", Chile: "CHI",
+  India: "IND", Namibia: "NAM", Kenya: "KEN", "New Zealand": "NZL", Italy: "ITA",
+  "Czech Republic": "CZE", Denmark: "DEN", Serbia: "SRB",
+};
+const codeFor = (t) => CODES[t] || t.slice(0, 3).toUpperCase();
+
+function groupTeams(category) {
+  const set = new Set();
+  for (const m of state.matches) {
+    if (m.category === category && GROUP_ROUNDS.includes(m.round) &&
+        isRealTeam(m.teamA) && isRealTeam(m.teamB)) {
+      set.add(m.teamA); set.add(m.teamB);
+    }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+// The head-to-head match between two teams in a category's group stage.
+function headToHead(category, t1, t2) {
+  return state.matches.find((m) =>
+    m.category === category && GROUP_ROUNDS.includes(m.round) &&
+    ((m.teamA === t1 && m.teamB === t2) || (m.teamA === t2 && m.teamB === t1)));
+}
+
+// The cross / head-to-head grid (mirrors the spreadsheet's results matrix).
+function renderCrossTable(category) {
+  const teams = groupTeams(category);
+  if (teams.length < 2) return "";
+  const mode = state.crossMode === "points" ? "points" : "sets";
+
+  let html = `<div class="cross-bar">
+      <p class="section-title">Head-to-head · ${mode === "points" ? "points" : "sets"}</p>
+      <div class="cross-toggle">
+        <button class="chip ${mode === "sets" ? "is-active" : ""}" data-mode="sets">Sets</button>
+        <button class="chip ${mode === "points" ? "is-active" : ""}" data-mode="points">Points</button>
+      </div>
+    </div>`;
+
+  html += `<div class="cross-wrap"><table class="cross"><thead><tr><th class="corner"></th>`;
+  for (const c of teams) {
+    html += `<th title="${esc(c)}"><span class="flag">${flagFor(c)}</span><br>${codeFor(c)}</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+
+  for (const r of teams) {
+    html += `<tr><th class="rowhead" title="${esc(r)}"><span class="flag">${flagFor(r)}</span>${esc(r)}</th>`;
+    for (const c of teams) {
+      if (r === c) { html += `<td class="self"></td>`; continue; }
+      const m = headToHead(category, r, c);
+      let cls = "np", txt = "–";
+      if (m) {
+        const rowIsA = m.teamA === r;
+        const rs = rowIsA ? m.setsA : m.setsB;
+        const os = rowIsA ? m.setsB : m.setsA;
+        const rp = rowIsA ? m.pointsA : m.pointsB;
+        const op = rowIsA ? m.pointsB : m.pointsA;
+        if (isFinished(m) || rs + os > 0) {
+          txt = mode === "points" ? `${rp}:${op}` : `${rs}:${os}`;
+          cls = rs > os ? "win" : os > rs ? "loss" : "np";
+        }
+      }
+      html += `<td class="${cls}">${txt}</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
 }
 
 function renderMatchFilter() {
