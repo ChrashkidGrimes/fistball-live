@@ -244,40 +244,44 @@ function renderCategories() {
 function renderStandings() {
   const host = $("standings");
   const rows = computeStandings(state.activeCategory);
-  if (!rows) {
-    host.innerHTML = `<div class="empty">This category is a knock-out / placement stage — no group standings.<br>Check the <b>Matches</b> tab for fixtures and results.</div>`;
-    return;
-  }
-  const anyPlayed = rows.some((r) => r.played > 0);
-  const totalTeams = rows.length;
-  const qualifyCount = Math.min(2, totalTeams); // highlight top 2
+  let html = "";
 
-  let html = `<p class="section-title">${state.activeCategory} · Group standings</p>`;
-  html += `<div class="table-wrap"><table class="standings">
-    <thead><tr>
-      <th>#</th><th class="team">Team</th><th>P</th><th>W</th><th>L</th>
-      <th>Sets</th><th>±</th><th>Pts</th>
-    </tr></thead><tbody>`;
-  rows.forEach((r, i) => {
-    const setDiff = r.setsWon - r.setsLost;
-    const qualified = i < qualifyCount;
-    html += `<tr class="${qualified ? "qualified" : ""}">
-      <td><span class="pos">${i + 1}</span></td>
-      <td class="team"><span class="team-name"><span class="flag">${flagFor(r.team)}</span>${esc(r.team)}</span></td>
-      <td>${r.played}</td>
-      <td>${r.wins}</td>
-      <td>${r.losses}</td>
-      <td class="dim">${r.setsWon}-${r.setsLost}</td>
-      <td class="${setDiff > 0 ? "" : "dim"}">${setDiff > 0 ? "+" : ""}${setDiff}</td>
-      <td class="pts-col">${r.pts}</td>
-    </tr>`;
-  });
-  html += `</tbody></table></div>`;
-  if (!anyPlayed) {
-    html += `<div class="empty">No matches completed yet — standings will fill in as results come in.</div>`;
+  if (rows) {
+    const anyPlayed = rows.some((r) => r.played > 0);
+    const qualifyCount = Math.min(2, rows.length); // highlight top 2
+
+    html += `<p class="section-title">${esc(state.activeCategory)} · Group standings</p>`;
+    html += `<div class="table-wrap"><table class="standings">
+      <thead><tr>
+        <th>#</th><th class="team">Team</th><th>P</th><th>W</th><th>L</th>
+        <th>Sets</th><th>±</th><th>Pts</th>
+      </tr></thead><tbody>`;
+    rows.forEach((r, i) => {
+      const setDiff = r.setsWon - r.setsLost;
+      const qualified = i < qualifyCount;
+      html += `<tr class="${qualified ? "qualified" : ""}">
+        <td><span class="pos">${i + 1}</span></td>
+        <td class="team"><span class="team-name"><span class="flag">${flagFor(r.team)}</span>${esc(r.team)}</span></td>
+        <td>${r.played}</td>
+        <td>${r.wins}</td>
+        <td>${r.losses}</td>
+        <td class="dim">${r.setsWon}-${r.setsLost}</td>
+        <td class="${setDiff > 0 ? "" : "dim"}">${setDiff > 0 ? "+" : ""}${setDiff}</td>
+        <td class="pts-col">${r.pts}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    if (!anyPlayed) {
+      html += `<div class="empty">No matches completed yet — standings will fill in as results come in.</div>`;
+    }
+    html += renderCrossTable(state.activeCategory);
   }
 
-  html += renderCrossTable(state.activeCategory);
+  html += renderKnockout(state.activeCategory);
+
+  if (!html) {
+    html = `<div class="empty">No data for this category yet — check the <b>Matches</b> tab.</div>`;
+  }
 
   host.innerHTML = html;
 
@@ -364,6 +368,86 @@ function renderCrossTable(category) {
     html += `</tr>`;
   }
   html += `</tbody></table></div>`;
+  return html;
+}
+
+/* ---------------------- Knockout / bracket ---------------------- */
+
+function knockoutMatches(category) {
+  return state.matches.filter((m) =>
+    m.category === category && !GROUP_ROUNDS.includes(m.round));
+}
+
+// Classify a knockout round into a tree stage (medal path) or a list stage.
+function knockoutStage(round) {
+  const r = round.toLowerCase();
+  if (r.includes("4tr final") || r.includes("quarter")) return { group: "tree", key: "qf", title: "Quarterfinals" };
+  if (r.includes("semi") || r.includes("halbfinale")) return { group: "tree", key: "sf", title: "Semifinals" };
+  if (r.includes("bronze")) return { group: "tree", key: "bronze", title: "Bronze" };
+  if (r.includes("gold medal") || r.includes("gold medal match")) return { group: "tree", key: "final", title: "Final" };
+  if (r.includes("hoffnung")) return { group: "list", title: "Repechage", order: 1 };
+  if (r.includes("intermediate")) return { group: "list", title: "Intermediate round", order: 2 };
+  if (r.includes("placement 5")) return { group: "list", title: "5th place", order: 3 };
+  if (r.includes("7-9") || r.includes("placement 7")) return { group: "list", title: "Places 7–9", order: 4 };
+  return { group: "list", title: round, order: 5 };
+}
+
+// Compact bracket node (keeps the sheet's slot labels, e.g. "Winner SF1").
+function bracketNode(m) {
+  if (!m) return `<div class="bmatch empty">—</div>`;
+  const played = isFinished(m) || m.setsA + m.setsB > 0;
+  const aWin = isFinished(m) && m.setsA > m.setsB;
+  const bWin = isFinished(m) && m.setsB > m.setsA;
+  const live = isLive(m);
+  const side = (name, score, win) =>
+    `<div class="bteam ${win ? "win" : ""}"><span class="bn">${esc(name)}</span><span class="bs">${played ? score : ""}</span></div>`;
+  return `<div class="bmatch ${live ? "live" : ""}">
+      ${side(m.teamA, m.setsA, aWin)}
+      ${side(m.teamB, m.setsB, bWin)}
+    </div>`;
+}
+
+function renderKnockout(category) {
+  const ms = knockoutMatches(category);
+  if (!ms.length) return "";
+
+  const tree = { qf: [], sf: [], bronze: [], final: [] };
+  const lists = new Map();
+  for (const m of ms) {
+    const st = knockoutStage(m.round);
+    if (st.group === "tree") tree[st.key].push(m);
+    else {
+      if (!lists.has(st.title)) lists.set(st.title, { order: st.order, items: [] });
+      lists.get(st.title).items.push(m);
+    }
+  }
+
+  let html = `<p class="section-title">Knockout</p>`;
+
+  // Medal-path tree
+  const cols = [];
+  if (tree.qf.length) cols.push(["Quarterfinals", tree.qf]);
+  if (tree.sf.length) cols.push(["Semifinals", tree.sf]);
+  if (tree.final.length || tree.bronze.length) cols.push(["Final", tree.final, tree.bronze]);
+  if (cols.length) {
+    html += `<div class="bracket">`;
+    for (const [title, items, bronze] of cols) {
+      html += `<div class="bround"><div class="bround-title">${title}</div>`;
+      html += items.map(bracketNode).join("");
+      if (bronze && bronze.length) {
+        html += `<div class="bround-title bronze-title">Bronze</div>` + bronze.map(bracketNode).join("");
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Placement / other rounds as cards
+  const ordered = [...lists.entries()].sort((a, b) => (a[1].order || 9) - (b[1].order || 9));
+  for (const [title, obj] of ordered) {
+    html += `<p class="section-title sub">${esc(title)}</p>`;
+    html += obj.items.map(matchCard).join("");
+  }
   return html;
 }
 
