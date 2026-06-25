@@ -464,14 +464,9 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
   align-items: center;
   position: relative;
 }
-.bround-cards--final { position: relative; justify-content: center; }
+.bround-cards--final { justify-content: center; }
 .bround-cards--final > .bmatch { margin: 0; }
-.bronze-block {
-  position: absolute;
-  left: 0; right: 0;
-  top: 50%;
-  margin-top: 34px;
-}
+.bronze-spacer { visibility: hidden; pointer-events: none; }
 
 /* Bracket connector lines */
 .bround:not(:last-child) .bslot::after {            /* horizontal line out of each match */

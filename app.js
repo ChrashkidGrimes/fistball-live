@@ -437,11 +437,17 @@ function renderKnockout(category) {
     html += `<div class="bracket">`;
     for (const [title, items, bronze] of cols) {
       if (bronze !== undefined) {
-        // Final column: final centred (level with the SF midpoint), bronze just below it.
+        // Final column: final centred (level with the SF midpoint), bronze just below.
+        // An invisible clone of the bronze block above the final keeps it symmetric
+        // (so the final stays centred) while everything stays in normal flow — no overflow.
+        const bronzeInner = bronze.length
+          ? `<div class="bround-title bronze-title">Bronze</div>${bronze.map(bracketNode).join("")}`
+          : "";
         html += `<div class="bround"><div class="bround-title">${title}</div>
           <div class="bround-cards bround-cards--final">
+            ${bronzeInner ? `<div class="bronze-block bronze-spacer" aria-hidden="true">${bronzeInner}</div>` : ""}
             ${items.map(bracketNode).join("")}
-            ${bronze.length ? `<div class="bronze-block"><div class="bround-title bronze-title">Bronze</div>${bronze.map(bracketNode).join("")}</div>` : ""}
+            ${bronzeInner ? `<div class="bronze-block">${bronzeInner}</div>` : ""}
           </div></div>`;
       } else {
         html += `<div class="bround"><div class="bround-title">${title}</div>
