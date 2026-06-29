@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none"
+     stroke="#ffffff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+  <!-- ball -->
+  <circle cx="372" cy="120" r="44" stroke-width="20"/>
+  <!-- head -->
+  <circle cx="232" cy="138" r="34"/>
+  <!-- raised arm: shoulder -> elbow -> hand toward the ball -->
+  <path d="M236 196 L292 168 L332 138"/>
+  <!-- torso -->
+  <path d="M236 196 L214 312"/>
+  <!-- front leg -->
+  <path d="M214 312 L268 392 L322 420"/>
+  <!-- back leg -->
+  <path d="M214 312 L150 388 L110 452"/>
+</svg>
