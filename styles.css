@@ -540,6 +540,46 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 .bteam .bs { font-weight: 800; font-variant-numeric: tabular-nums; }
 .bteam .bp { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 14px; text-align: right; }
 
+/* Cards (cautions) */
+.card-team {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card-team-head {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+}
+.card-player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.card-player:last-child { border-bottom: none; }
+.cp-name { font-size: 14px; min-width: 0; }
+.cp-games { font-size: 11px; margin-top: 2px; }
+.cp-badges { display: flex; gap: 6px; flex: none; }
+.badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+.badge.y { background: var(--gold); color: #3a2e0a; }
+.badge.r { background: #e23b3b; color: #fff; }
+.badge.yr { background: linear-gradient(100deg, var(--gold) 0 48%, #e23b3b 52% 100%); color: #fff; }
+
 /* Update available toast */
 .update-toast {
   position: fixed;

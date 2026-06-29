@@ -15,6 +15,8 @@ const CONFIG = {
 const DATA_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&gid=${CONFIG.gid}&_=`;
 // The Config tab is read by NAME, so the same app works for any event's sheet.
 const CONFIG_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Config&_=`;
+// Disciplinary records (yellow / yellow-red / red cards) per player.
+const CAUTIONS_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Cautions&_=`;
 
 // Rounds that form a round-robin group stage (used to compute standings).
 const GROUP_ROUNDS = ["Qualification round", "WEC - Vorrunde"];
@@ -64,6 +66,7 @@ const state = {
   matchFilter: "all",
   crossMode: localStorage.getItem("fb_cross") || "sets",
   rules: null,
+  cautions: [],
   lastUpdated: null,
 };
 
@@ -673,13 +676,16 @@ function setView(view) {
   $("tabStandings").classList.toggle("is-active", view === "standings");
   $("tabBracket").classList.toggle("is-active", view === "bracket");
   $("tabMatches").classList.toggle("is-active", view === "matches");
+  $("tabCards").classList.toggle("is-active", view === "cards");
   $("standingsView").hidden = view !== "standings";
   $("bracketView").hidden = view !== "bracket";
   $("matchesView").hidden = view !== "matches";
+  $("cardsView").hidden = view !== "cards";
   renderActiveView();
 }
 
 function renderActiveView() {
+  if (state.activeView === "cards") return renderCards();   // tournament-wide
   if (!state.activeCategory) return;
   if (state.activeView === "standings") renderStandings();
   else if (state.activeView === "bracket") renderBracket();
@@ -691,6 +697,96 @@ function renderBracket() {
   const html = renderKnockout(state.activeCategory);
   host.innerHTML = html ||
     `<div class="empty">No knockout stage for this category.<br>Check <b>Standings</b> or <b>Matches</b>.</div>`;
+}
+
+/* ---------------------- Cards (cautions) ---------------------- */
+
+// Parse the Cautions tab. Primary source = the raw event list (one row per
+// caution, with the game and type); falls back to the aggregated summary.
+function parseCautions(csvText) {
+  let rows;
+  try { rows = parseCSV(csvText); } catch (_) { return []; }
+  const players = new Map();
+  const ensure = (team, nr, name, first) => {
+    const key = `${team}|${nr}|${name}|${first}`;
+    if (!players.has(key)) {
+      const i = team.indexOf(" - ");
+      players.set(key, {
+        team, teamName: i >= 0 ? team.slice(0, i) : team,
+        category: i >= 0 ? team.slice(i + 3) : "",
+        nr, name, first, y: 0, yr: 0, r: 0, events: [],
+      });
+    }
+    return players.get(key);
+  };
+  const TYPES = ["Y", "YR", "R"];
+  // Raw events: cols K–P → Team(10), Nr(11), Name(12), First(13), Game(14), Caution(15)
+  for (const r of rows) {
+    const team = (r[10] || "").trim();
+    const c = (r[15] || "").trim().toUpperCase();
+    if (!team || !TYPES.includes(c)) continue;
+    const p = ensure(team, (r[11] || "").trim(), (r[12] || "").trim(), (r[13] || "").trim());
+    p[c.toLowerCase()]++;
+    p.events.push({ game: (r[14] || "").trim(), type: c });
+  }
+  // Fallback: aggregated summary cols A–I (Team1, Nr2, Name3, First4, Y5, YR6, R7)
+  if (players.size === 0) {
+    for (const r of rows) {
+      const team = (r[1] || "").trim();
+      if (!team || team === "#N/A") continue;
+      const y = num(r[5]), yr = num(r[6]), rr = num(r[7]);
+      if (y + yr + rr === 0) continue;
+      const p = ensure(team, (r[2] || "").trim(), (r[3] || "").trim(), (r[4] || "").trim());
+      p.y = y; p.yr = yr; p.r = rr;
+    }
+  }
+  return [...players.values()];
+}
+
+function cautionBadge(kind, n) {
+  if (!n) return "";
+  const label = { y: "Y", yr: "YR", r: "R" }[kind];
+  return `<span class="badge ${kind}">${label}${n > 1 ? " ×" + n : ""}</span>`;
+}
+
+function renderCards() {
+  const host = $("cards");
+  const players = state.cautions || [];
+  if (!players.length) {
+    host.innerHTML = `<div class="empty">No cautions recorded yet — cards will appear here as referees log them.</div>`;
+    return;
+  }
+  // Group by category (ordered), then by team.
+  const byCat = new Map();
+  for (const p of players) {
+    if (!byCat.has(p.category)) byCat.set(p.category, new Map());
+    const teams = byCat.get(p.category);
+    if (!teams.has(p.team)) teams.set(p.team, []);
+    teams.get(p.team).push(p);
+  }
+  const cats = [...byCat.keys()].sort((a, b) => orderIndex(a) - orderIndex(b) || a.localeCompare(b));
+
+  let html = "";
+  for (const cat of cats) {
+    html += `<p class="section-title">${esc(cat || "—")}</p>`;
+    const teams = [...byCat.get(cat).entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    for (const [, ps] of teams) {
+      const name = ps[0].teamName;
+      ps.sort((a, b) => (b.r - a.r) || (b.yr - a.yr) || (b.y - a.y) || a.name.localeCompare(b.name));
+      html += `<div class="card-team"><div class="card-team-head"><span class="flag">${flagFor(name)}</span>${esc(name)}</div>`;
+      for (const p of ps) {
+        const games = p.events.length
+          ? `<div class="cp-games dim">${p.events.map((e) => `${e.type}${e.game ? " · game " + esc(e.game) : ""}`).join(" &nbsp;·&nbsp; ")}</div>`
+          : "";
+        html += `<div class="card-player">
+          <span class="cp-name">${esc(((p.first ? p.first + " " : "") + p.name).trim() || "—")} ${p.nr ? `<span class="dim">#${esc(p.nr)}</span>` : ""}${games}</span>
+          <span class="cp-badges">${cautionBadge("y", p.y)}${cautionBadge("yr", p.yr)}${cautionBadge("r", p.r)}</span>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+  }
+  host.innerHTML = html;
 }
 
 /* ---------------------- Rules from the Config tab ---------------------- */
@@ -772,9 +868,10 @@ async function load(showSpin) {
   const btn = $("refreshBtn");
   if (showSpin) btn.classList.add("spin");
   try {
-    const [resR, cfgR] = await Promise.allSettled([
+    const [resR, cfgR, cauR] = await Promise.allSettled([
       fetch(DATA_URL + Date.now(), { cache: "no-store" }),
       fetch(CONFIG_URL + Date.now(), { cache: "no-store" }),
+      fetch(CAUTIONS_URL + Date.now(), { cache: "no-store" }),
     ]);
     // Config is optional — fall back to defaults / cache if it fails.
     if (cfgR.status === "fulfilled" && cfgR.value.ok) {
@@ -784,6 +881,15 @@ async function load(showSpin) {
     } else if (!state.rules) {
       const cachedCfg = localStorage.getItem("fb_rules");
       state.rules = cachedCfg ? parseRules(cachedCfg) : DEFAULT_RULES;
+    }
+    // Cautions are optional too.
+    if (cauR.status === "fulfilled" && cauR.value.ok) {
+      const cauText = await cauR.value.text();
+      state.cautions = parseCautions(cauText);
+      try { localStorage.setItem("fb_cautions", cauText); } catch (_) {}
+    } else if (!state.cautions.length) {
+      const cachedCau = localStorage.getItem("fb_cautions");
+      if (cachedCau) state.cautions = parseCautions(cachedCau);
     }
     if (resR.status !== "fulfilled" || !resR.value.ok) throw new Error("results fetch failed");
     const text = await resR.value.text();
@@ -908,6 +1014,7 @@ if ("serviceWorker" in navigator) {
 $("tabStandings").onclick = () => setView("standings");
 $("tabBracket").onclick = () => setView("bracket");
 $("tabMatches").onclick = () => setView("matches");
+$("tabCards").onclick = () => setView("cards");
 $("refreshBtn").onclick = () => load(true);
 setView(state.activeView);
 
