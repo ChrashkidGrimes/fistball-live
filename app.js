@@ -756,20 +756,22 @@ function renderCards() {
     host.innerHTML = `<div class="empty">No cautions recorded yet — cards will appear here as referees log them.</div>`;
     return;
   }
-  // Group by category (ordered), then by team.
-  const byCat = new Map();
+  // Group only by gender (Women / Men), then by team within each.
+  const GENDER_LABEL = { women: "Women", men: "Men", other: "Other" };
+  const byGender = new Map();
   for (const p of players) {
-    if (!byCat.has(p.category)) byCat.set(p.category, new Map());
-    const teams = byCat.get(p.category);
+    const g = genderOf(p.category);
+    if (!byGender.has(g)) byGender.set(g, new Map());
+    const teams = byGender.get(g);
     if (!teams.has(p.team)) teams.set(p.team, []);
     teams.get(p.team).push(p);
   }
-  const cats = [...byCat.keys()].sort((a, b) => orderIndex(a) - orderIndex(b) || a.localeCompare(b));
 
   let html = "";
-  for (const cat of cats) {
-    html += `<p class="section-title">${esc(cat || "—")}</p>`;
-    const teams = [...byCat.get(cat).entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  for (const g of ["women", "men", "other"]) {
+    if (!byGender.has(g)) continue;
+    html += `<p class="section-title">${GENDER_LABEL[g]}</p>`;
+    const teams = [...byGender.get(g).entries()].sort((a, b) => a[0].localeCompare(b[0]));
     for (const [, ps] of teams) {
       const name = ps[0].teamName;
       ps.sort((a, b) => (b.r - a.r) || (b.yr - a.yr) || (b.y - a.y) || a.name.localeCompare(b.name));
