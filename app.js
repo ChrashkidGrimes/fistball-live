@@ -355,7 +355,7 @@ function renderStandings() {
     html += `<p class="section-title">${esc(state.activeCategory)} · Group standings</p>`;
     html += `<div class="table-wrap"><table class="standings">
       <thead><tr>
-        <th>#</th><th class="team">Team</th><th>P</th><th>W</th>${showDraws ? "<th>D</th>" : ""}<th>L</th>
+        <th>#</th><th class="team">Team</th><th>M</th><th>W</th>${showDraws ? "<th>D</th>" : ""}<th>L</th>
         <th>Sets</th><th>±</th><th>Pts</th>
       </tr></thead><tbody>`;
     rows.forEach((r, i) => {
