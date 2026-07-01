@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:unit": "node --test scripts/__tests__/",
+    "test:unit": "node --test scripts/__tests__/*.test.mjs",
     "test:rls": "node --test tests/rls.test.mjs tests/migrate-sheet-data.test.mjs",
     "test:e2e": "playwright test",
     "supabase": "supabase"
