@@ -26,3 +26,14 @@ export async function createCategory({ tournament_id, name, format }) {
   const { error } = await getClient().from('categories').insert({ tournament_id, name, format });
   if (error) throw error;
 }
+
+export async function listCourts(tournamentId) {
+  const { data, error } = await getClient().from('courts').select().eq('tournament_id', tournamentId).order('name');
+  if (error) throw error;
+  return data;
+}
+
+export async function createCourt({ tournament_id, name }) {
+  const { error } = await getClient().from('courts').insert({ tournament_id, name });
+  if (error) throw error;
+}
