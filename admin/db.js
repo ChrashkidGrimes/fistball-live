@@ -53,3 +53,30 @@ export async function deleteTeam(id) {
   const { error } = await getClient().from('teams').delete().eq('id', id);
   if (error) throw error;
 }
+
+export async function listMatches(categoryId) {
+  const { data, error } = await getClient()
+    .from('matches')
+    .select('id, status, round_label, best_of, team_a:team_a_id(name), team_b:team_b_id(name), court:court_id(name)')
+    .eq('category_id', categoryId)
+    .order('scheduled_time');
+  if (error) throw error;
+  return data;
+}
+
+export async function createMatch({ category_id, team_a_id, team_b_id, court_id, round_label, best_of }) {
+  const { error } = await getClient().from('matches').insert({
+    category_id, team_a_id, team_b_id, court_id: court_id || null, round_label: round_label || null, best_of: best_of || 5,
+  });
+  if (error) throw error;
+}
+
+export async function finishMatch(id) {
+  const { error } = await getClient().from('matches').update({ status: 'finished' }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function startMatch(id) {
+  const { error } = await getClient().rpc('start_match', { p_match_id: id });
+  if (error) throw error;
+}

@@ -49,3 +49,42 @@ test('admin can create a team under a category, and delete blocked by FK is surf
   await page.click('#teamForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Playwright FC');
 });
+
+test('admin can create a match and mark it finished', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.click('button[data-screen=teams]');
+  await page.selectOption('#team_tournament', { label: 'Playwright Test Tournament' });
+  await page.selectOption('#team_category', { label: 'Playwright Category' });
+  await page.fill('#team_name', 'Playwright United');
+  await page.click('#teamForm button[type=submit]');
+  await expect(page.locator('table tbody')).toContainText('Playwright United');
+
+  await page.click('button[data-screen=matches]');
+  await page.selectOption('#match_tournament', { label: 'Playwright Test Tournament' });
+  await page.selectOption('#match_category', { label: 'Playwright Category' });
+  await page.selectOption('#match_team_a', { label: 'Playwright FC' });
+  await page.selectOption('#match_team_b', { label: 'Playwright United' });
+  await page.click('#matchForm button[type=submit]');
+  await expect(page.locator('table tbody')).toContainText('Playwright FC');
+
+  const row = page.locator('tr', { hasText: 'Playwright FC' });
+  await row.locator('button[data-finish]').click();
+  await expect(row).toContainText('finished');
+});
+
+test('scorer does not see a finish control on matches', async ({ page }) => {
+  await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.click('button[data-screen=matches]');
+  await expect(page.locator('button[data-finish]')).toHaveCount(0);
+});
+
+test('anonymous (logged out) request can still read tournaments from Supabase', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const mod = await import('/supabase-client.js');
+    const { data, error } = await mod.getClient().from('tournaments').select().limit(1);
+    return { count: data?.length ?? 0, error: error?.message ?? null };
+  });
+  expect(result.error).toBeNull();
+  expect(result.count).toBeGreaterThanOrEqual(0);
+});
