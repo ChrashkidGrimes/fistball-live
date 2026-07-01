@@ -1028,7 +1028,7 @@ Expected: FAIL with `Cannot find module '../scripts/migrate-sheet-data.mjs'`.
 
 ```js
 import { createClient } from '@supabase/supabase-js';
-import { buildMigrationPlan, parseScheduleRow } from './parse-sheet.mjs';
+import { buildMigrationPlan, mapStatus } from './parse-sheet.mjs';
 
 const SHEET_ID = '1IWuv2zOZtIJDZCFnItp_z8p546azRGlD8I052jVe8Mk';
 const SCHEDULE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
@@ -1078,7 +1078,6 @@ export async function migrateSheetData({
   }
 
   for (const m of plan.matches) {
-    const { mapStatus } = await import('./parse-sheet.mjs');
     const { error } = await supabase.from('matches').upsert({
       sheet_match_nr: m.nr,
       category_id: categoryIdByName.get(m.category),
