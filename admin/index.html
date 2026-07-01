@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fistball EMS — Admin</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="loginView">
+    <form id="loginForm">
+      <h1>Fistball EMS — Login</h1>
+      <label>E-Mail<input id="email" type="email" required autocomplete="username"></label>
+      <label>Passwort<input id="password" type="password" required autocomplete="current-password"></label>
+      <button type="submit">Login</button>
+      <p id="loginError" class="error" hidden></p>
+    </form>
+  </div>
+  <div id="appView" hidden>
+    <header>
+      <h1>Fistball EMS — Admin</h1>
+      <span id="roleLabel"></span>
+    </header>
+    <nav id="nav"></nav>
+    <main id="main"></main>
+  </div>
+  <script type="module" src="app.js"></script>
+  <script type="module" src="screens/tournaments.js"></script>
+  <script type="module" src="screens/categories.js"></script>
+  <script type="module" src="screens/courts.js"></script>
+  <script type="module" src="screens/teams.js"></script>
+  <script type="module" src="screens/matches.js"></script>
+</body>
+</html>
