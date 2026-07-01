@@ -1,0 +1,16 @@
+{
+  "name": "fistball-ems-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "node --test scripts/__tests__/",
+    "test:rls": "node --test tests/rls.test.mjs tests/migrate-sheet-data.test.mjs",
+    "test:e2e": "playwright test",
+    "supabase": "supabase"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@supabase/supabase-js": "^2.110.0",
+    "supabase": "^2.109.0"
+  }
+}

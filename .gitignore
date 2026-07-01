@@ -1,2 +1,8 @@
 .DS_Store
 .claude/
+node_modules/
+.env
+.env.local
+admin/config.js
+test-results/
+playwright-report/
