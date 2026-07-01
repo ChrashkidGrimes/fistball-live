@@ -20,3 +20,13 @@ test('admin can create a tournament', async ({ page }) => {
   await page.click('#tournamentForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Playwright Test Tournament');
 });
+
+test('admin can create a category under a tournament', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.click('button[data-screen=categories]');
+  await page.selectOption('#c_tournament', { label: 'Playwright Test Tournament' });
+  await page.fill('#c_name', 'Playwright Category');
+  await page.selectOption('#c_format', 'round_robin');
+  await page.click('#categoryForm button[type=submit]');
+  await expect(page.locator('table tbody')).toContainText('Playwright Category');
+});
