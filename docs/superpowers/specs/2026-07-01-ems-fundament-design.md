@@ -84,14 +84,19 @@ Teilprojekte keine Schema-Migrationen mit Breaking Changes brauchen:
 | Tabelle | Zweck | Wichtige Felder |
 |---|---|---|
 | `tournaments` | Ein Turnier | `name`, `start_date`, `end_date`, `config` (jsonb: Scoring-/Tiebreaker-Regeln, analog zum bestehenden `Config`-Tab in der Sheet-Lösung) |
-| `categories` | Kategorie/Division innerhalb eines Turniers (z. B. U18 M Gold, WEC) | `tournament_id`, `name`, `format` (round robin / knockout), `best_of` |
-| `teams` | Team innerhalb einer Kategorie | `category_id`, `name` (Kein Spieler-Kader in Phase 1 — bewusst zurückgestellt) |
+| `categories` | Kategorie/Division innerhalb eines Turniers (z. B. U18 M Gold, WEC) | `tournament_id`, `name`, `format` (round robin / knockout) |
+| `teams` | Team innerhalb einer Kategorie | `category_id`, `name`, `short_name` (Kein Spieler-Kader in Phase 1 — bewusst zurückgestellt) |
 | `courts` | Spielfeld | `tournament_id`, `name`/`number` |
-| `matches` | Eine Begegnung | `category_id`, `team_a_id`, `team_b_id`, `court_id`, `scheduled_time`, `status` (`scheduled`/`live`/`finished`), `round_label` |
+| `matches` | Eine Begegnung | `category_id`, `team_a_id`, `team_b_id`, `court_id`, `scheduled_time`, `status` (`scheduled`/`live`/`finished`), `round_label`, `best_of` |
 | `sets` | Satz innerhalb eines Matches (Schema jetzt, UI erst Teilprojekt 2) | `match_id`, `set_number`, `points_a`, `points_b`, `winner_team_id` |
 | `point_events` | Einzelereignis innerhalb eines Satzes (Schema jetzt, UI erst Teilprojekt 2) | `set_id`, `event_type`, `team_id`, `created_at` |
-| `referee_assignments` | Zuordnung Schiedsrichter ↔ Match (Schema jetzt, UI erst Teilprojekt 4) | `match_id`, `referee_name`, `role` (1st/2nd/linesman) |
+| `referee_assignments` | Zuordnung Schiedsrichter ↔ Match (Schema jetzt, UI erst Teilprojekt 4) | `match_id`, `referee_name`, `role` (Freitext, z. B. "1st Referee", "2nd Referee", "Recording Clerk", "Assistant Referee 1/2" — die realen Rollen aus dem offiziellen Game-Report-Formular, kein festes Enum) |
 | `user_roles` | Rollenzuordnung für die zwei geteilten Logins | `user_id`, `role` (`admin`/`scorer`) |
+
+**Hinweis zu `best_of`:** liegt bewusst auf `matches`, nicht auf `categories` —
+das Best-of variiert real pro Runde innerhalb derselben Kategorie (z. B. WEC-
+Vorrunde Best-of-3, WEC-Gold-Medal-Match Best-of-5), wie eine Prüfung der
+echten Turnierdaten bestätigt hat.
 
 Referentielle Integrität über Foreign Keys (z. B. `matches.team_a_id →
 teams.id`); Löschen von referenzierten Teams/Courts wird dadurch verhindert.
@@ -130,10 +135,20 @@ spätere Policy-Änderungen zu vermeiden.
    manuell setzbar unter der oben beschriebenen `finished`-Einschränkung.
 
 **CSV/Sheet-Import:** Die Daten für das Juli-Turnier existieren bereits im
-Google Sheet (Matches 16–48 laut bestehendem README). Statt manueller
+öffentlichen Google Sheet (Schedule-Tab, Matches 16–48 laut bestehendem
+README, plus Config-Tab für Punktetabelle/Tiebreaker). Statt manueller
 Neuerfassung: ein einmaliges Import-Tool, das die bestehende Parsing-Logik
-aus `app.js` wiederverwendet, um Teams, Courts und Matches zu befüllen. Die
-manuellen Formulare bleiben zusätzlich für Korrekturen und künftige Turniere.
+aus `app.js` wiederverwendet, um Teams, Courts, Matches und die
+Turnier-`config` zu befüllen. Die manuellen Formulare bleiben zusätzlich für
+Korrekturen und künftige Turniere.
+
+Das interne "Master"-Arbeitsblatt der Turnierleitung (mit einem separaten
+Game-Report-Tab pro Match) wurde zur Prüfung kurzzeitig eingesehen: die
+Punkt-für-Punkt-Raster darin sind in der Praxis durchgängig ungefüllt (auch
+bei bereits abgeschlossenen Matches) — es gibt also **keine bestehenden
+Punkt-Event-Daten zu importieren**. Der Import bleibt auf Teams/Courts/
+Matches/Config aus dem öffentlichen Sheet beschränkt; das deckt sich mit dem
+ursprünglichen Scope.
 
 ## Fehlerbehandlung
 
