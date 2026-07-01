@@ -1,9 +1,9 @@
 import { registerScreen } from '../app.js';
-import { listTournaments, listCategories, listTeams, createTeam, deleteTeam } from '../db.js';
+import { listTournaments, listCategories, listTeams, createTeam, deleteTeam, escapeHtml } from '../db.js';
 
 async function render(main) {
   const tournaments = await listTournaments();
-  const tOptions = tournaments.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
+  const tOptions = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   main.innerHTML = `
     <h2>Teams</h2>
     <div id="teamTableWrap"></div>
@@ -20,7 +20,7 @@ async function render(main) {
   async function refreshCategories(tournamentId) {
     const categories = await listCategories(tournamentId);
     document.getElementById('team_category').innerHTML =
-      categories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+      categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
     return categories;
   }
 
@@ -29,7 +29,7 @@ async function render(main) {
     document.getElementById('teamTableWrap').innerHTML = `
       <table><thead><tr><th>Name</th><th>Kurzname</th><th></th></tr></thead>
       <tbody>${teams.map((t) =>
-        `<tr><td>${t.name}</td><td>${t.short_name || ''}</td><td><button data-delete="${t.id}">Löschen</button></td></tr>`
+        `<tr><td>${escapeHtml(t.name)}</td><td>${escapeHtml(t.short_name || '')}</td><td><button data-delete="${t.id}">Löschen</button></td></tr>`
       ).join('')}</tbody></table>`;
     document.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.onclick = async () => {

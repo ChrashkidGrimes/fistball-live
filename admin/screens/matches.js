@@ -1,11 +1,11 @@
 import { registerScreen } from '../app.js';
 import {
-  listTournaments, listCategories, listTeams, listCourts, listMatches, createMatch, finishMatch,
+  listTournaments, listCategories, listTeams, listCourts, listMatches, createMatch, finishMatch, escapeHtml,
 } from '../db.js';
 
 async function render(main, { role }) {
   const tournaments = await listTournaments();
-  const tOptions = tournaments.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
+  const tOptions = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   main.innerHTML = `
     <h2>Matches</h2>
     <label>Turnier<select id="match_tournament">${tOptions}</select></label>
@@ -31,10 +31,10 @@ async function render(main, { role }) {
         <thead><tr><th>Team A</th><th>Team B</th><th>Court</th><th>Status</th><th></th></tr></thead>
         <tbody>${matches.map((m) => `
           <tr>
-            <td>${m.team_a?.name ?? ''}</td>
-            <td>${m.team_b?.name ?? ''}</td>
-            <td>${m.court?.name ?? ''}</td>
-            <td>${m.status}</td>
+            <td>${escapeHtml(m.team_a?.name ?? '')}</td>
+            <td>${escapeHtml(m.team_b?.name ?? '')}</td>
+            <td>${escapeHtml(m.court?.name ?? '')}</td>
+            <td>${escapeHtml(m.status)}</td>
             <td>${role === 'admin' && m.status !== 'finished'
               ? `<button data-finish="${m.id}">Finished</button>` : ''}</td>
           </tr>`).join('')}
@@ -51,16 +51,16 @@ async function render(main, { role }) {
   async function refreshCategories(tournamentId) {
     const categories = await listCategories(tournamentId);
     document.getElementById('match_category').innerHTML =
-      categories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+      categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
     return categories;
   }
 
   async function refreshTeamsAndCourts(tournamentId, categoryId) {
     const [teams, courts] = await Promise.all([listTeams(categoryId), listCourts(tournamentId)]);
-    document.getElementById('match_team_a').innerHTML = teams.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
-    document.getElementById('match_team_b').innerHTML = teams.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
+    document.getElementById('match_team_a').innerHTML = teams.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+    document.getElementById('match_team_b').innerHTML = teams.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
     document.getElementById('match_court').innerHTML =
-      `<option value="">—</option>` + courts.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+      `<option value="">—</option>` + courts.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
   }
 
   async function selectCategory(tournamentId, categoryId) {

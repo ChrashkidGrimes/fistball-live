@@ -1,9 +1,9 @@
 import { registerScreen } from '../app.js';
-import { listTournaments, listCategories, createCategory } from '../db.js';
+import { listTournaments, listCategories, createCategory, escapeHtml } from '../db.js';
 
 async function render(main) {
   const tournaments = await listTournaments();
-  const options = tournaments.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
+  const options = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   main.innerHTML = `
     <h2>Kategorien</h2>
     <label>Turnier
@@ -29,7 +29,7 @@ async function render(main) {
     document.getElementById('categoryTableWrap').innerHTML = `
       <table>
         <thead><tr><th>Name</th><th>Format</th></tr></thead>
-        <tbody>${categories.map((c) => `<tr><td>${c.name}</td><td>${c.format}</td></tr>`).join('')}</tbody>
+        <tbody>${categories.map((c) => `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.format)}</td></tr>`).join('')}</tbody>
       </table>`;
   }
 

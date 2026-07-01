@@ -1,9 +1,9 @@
 import { registerScreen } from '../app.js';
-import { listTournaments, listCourts, createCourt } from '../db.js';
+import { listTournaments, listCourts, createCourt, escapeHtml } from '../db.js';
 
 async function render(main) {
   const tournaments = await listTournaments();
-  const options = tournaments.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
+  const options = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   main.innerHTML = `
     <h2>Courts</h2>
     <div id="courtTableWrap"></div>
@@ -19,7 +19,7 @@ async function render(main) {
     const courts = tournamentId ? await listCourts(tournamentId) : [];
     document.getElementById('courtTableWrap').innerHTML = `
       <table><thead><tr><th>Name</th></tr></thead>
-      <tbody>${courts.map((c) => `<tr><td>${c.name}</td></tr>`).join('')}</tbody></table>`;
+      <tbody>${courts.map((c) => `<tr><td>${escapeHtml(c.name)}</td></tr>`).join('')}</tbody></table>`;
   }
 
   document.getElementById('court_tournament').onchange = (e) => renderTable(e.target.value);

@@ -1,5 +1,5 @@
 import { registerScreen } from '../app.js';
-import { listTournaments, createTournament } from '../db.js';
+import { listTournaments, createTournament, escapeHtml } from '../db.js';
 
 async function render(main) {
   const tournaments = await listTournaments();
@@ -8,7 +8,7 @@ async function render(main) {
     <table>
       <thead><tr><th>Name</th><th>Start</th><th>Ende</th></tr></thead>
       <tbody>${tournaments.map((t) =>
-        `<tr><td>${t.name}</td><td>${t.start_date}</td><td>${t.end_date}</td></tr>`).join('')}
+        `<tr><td>${escapeHtml(t.name)}</td><td>${escapeHtml(t.start_date)}</td><td>${escapeHtml(t.end_date)}</td></tr>`).join('')}
       </tbody>
     </table>
     <form id="tournamentForm" class="entity-form">
