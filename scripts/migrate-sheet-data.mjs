@@ -78,15 +78,28 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const res = await fetch(SCHEDULE_URL);
   if (!res.ok) throw new Error(`Failed to fetch schedule sheet: ${res.status}`);
   const scheduleCsvText = await res.text();
+  const tournament = {
+    name: '2026 U18 World Championship & Womens EFA Championship',
+    start_date: '2026-07-23',
+    end_date: '2026-07-26',
+  };
+
+  // Look up an existing tournament by name so repeated CLI runs update the
+  // same tournament instead of creating a duplicate (and orphaning the
+  // previous run's categories/courts/teams/matches).
+  const cliClient = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: existing, error: lookupError } = await cliClient
+    .from('tournaments').select('id').eq('name', tournament.name).maybeSingle();
+  if (lookupError) throw lookupError;
+
   const result = await migrateSheetData({
     scheduleCsvText,
-    tournament: {
-      name: '2026 U18 World Championship & Womens EFA Championship',
-      start_date: '2026-07-23',
-      end_date: '2026-07-26',
-    },
+    tournament,
     supabaseUrl: url,
     serviceKey,
+    existingTournamentId: existing?.id,
   });
   console.log(`Migration complete. Tournament ID: ${result.tournamentId}`);
 }
