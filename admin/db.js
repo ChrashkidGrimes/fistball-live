@@ -37,3 +37,19 @@ export async function createCourt({ tournament_id, name }) {
   const { error } = await getClient().from('courts').insert({ tournament_id, name });
   if (error) throw error;
 }
+
+export async function listTeams(categoryId) {
+  const { data, error } = await getClient().from('teams').select().eq('category_id', categoryId).order('name');
+  if (error) throw error;
+  return data;
+}
+
+export async function createTeam({ category_id, name, short_name }) {
+  const { error } = await getClient().from('teams').insert({ category_id, name, short_name: short_name || null });
+  if (error) throw error;
+}
+
+export async function deleteTeam(id) {
+  const { error } = await getClient().from('teams').delete().eq('id', id);
+  if (error) throw error;
+}

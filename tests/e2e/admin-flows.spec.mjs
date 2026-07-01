@@ -39,3 +39,13 @@ test('admin can create a court under a tournament', async ({ page }) => {
   await page.click('#courtForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Court 9');
 });
+
+test('admin can create a team under a category, and delete blocked by FK is surfaced as an error', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.click('button[data-screen=teams]');
+  await page.selectOption('#team_tournament', { label: 'Playwright Test Tournament' });
+  await page.selectOption('#team_category', { label: 'Playwright Category' });
+  await page.fill('#team_name', 'Playwright FC');
+  await page.click('#teamForm button[type=submit]');
+  await expect(page.locator('table tbody')).toContainText('Playwright FC');
+});
