@@ -143,12 +143,17 @@ Turnier-`config` zu befüllen. Die manuellen Formulare bleiben zusätzlich für
 Korrekturen und künftige Turniere.
 
 Das interne "Master"-Arbeitsblatt der Turnierleitung (mit einem separaten
-Game-Report-Tab pro Match) wurde zur Prüfung kurzzeitig eingesehen: die
-Punkt-für-Punkt-Raster darin sind in der Praxis durchgängig ungefüllt (auch
-bei bereits abgeschlossenen Matches) — es gibt also **keine bestehenden
-Punkt-Event-Daten zu importieren**. Der Import bleibt auf Teams/Courts/
-Matches/Config aus dem öffentlichen Sheet beschränkt; das deckt sich mit dem
-ursprünglichen Scope.
+Game-Report-Tab pro Match) wurde zur Prüfung kurzzeitig als **datenbereinigte
+Kopie** eingesehen (Punkt-Raster darin waren deshalb leer — das ist ein
+Artefakt der Bereinigung, keine Aussage über die echte Praxis). Laut
+Rückfrage wird das Punkt-für-Punkt-Raster in echten Turnieren tatsächlich
+von den Recording Clerks live mitgeführt — es gibt also eine gelebte, nur
+bisher analoge/Excel-basierte Praxis, die Teilprojekt 2 (Sumula) digitalisiert.
+Diese Live-Punktdaten liegen aber ausschließlich im privaten Master-Sheet
+(für uns nicht zugänglich) und fließen ohnehin erst nach dem jeweiligen
+Match ein — für den einmaligen Vorab-Import in Teilprojekt 1 bleibt es daher
+bei Teams/Courts/Matches/Config aus dem öffentlichen Sheet; das deckt sich
+mit dem ursprünglichen Scope.
 
 ## Fehlerbehandlung
 
