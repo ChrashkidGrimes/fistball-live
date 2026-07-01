@@ -134,13 +134,17 @@ spätere Policy-Änderungen zu vermeiden.
    Anlegen/Bearbeiten (Team A/B, Court, Zeit, Rundenbezeichnung); Status
    manuell setzbar unter der oben beschriebenen `finished`-Einschränkung.
 
-**CSV/Sheet-Import:** Die Daten für das Juli-Turnier existieren bereits im
-öffentlichen Google Sheet (Schedule-Tab, Matches 16–48 laut bestehendem
-README, plus Config-Tab für Punktetabelle/Tiebreaker). Statt manueller
-Neuerfassung: ein einmaliges Import-Tool, das die bestehende Parsing-Logik
-aus `app.js` wiederverwendet, um Teams, Courts, Matches und die
-Turnier-`config` zu befüllen. Die manuellen Formulare bleiben zusätzlich für
-Korrekturen und künftige Turniere.
+**Einmalige Datenmigration (kein UI-Feature):** Die Daten für das Juli-Turnier
+existieren bereits im öffentlichen Google Sheet (Schedule-Tab, Matches 16–48
+laut bestehendem README, plus Config-Tab für Punktetabelle/Tiebreaker). Statt
+eines wiederverwendbaren Import-Tools in der Admin-App wird das öffentliche
+Sheet **einmalig per Skript** (unter Wiederverwendung der bestehenden
+Parsing-Logik aus `app.js`) direkt in die Supabase-Tabellen (Teams, Courts,
+Matches, Turnier-`config`) übertragen — als Teil der Umsetzung, nicht als
+Feature der App. Die manuellen Formulare bleiben für Korrekturen zuständig.
+Künftige Turniere bräuchten ein neues, ähnliches Einmal-Skript oder manuelle
+Erfassung — das ist eine bewusste Scope-Reduktion für die 3-Wochen-Frist,
+siehe „Out of Scope".
 
 Das interne "Master"-Arbeitsblatt der Turnierleitung (mit einem separaten
 Game-Report-Tab pro Match) wurde zur Prüfung kurzzeitig als **datenbereinigte
@@ -151,9 +155,9 @@ von den Recording Clerks live mitgeführt — es gibt also eine gelebte, nur
 bisher analoge/Excel-basierte Praxis, die Teilprojekt 2 (Sumula) digitalisiert.
 Diese Live-Punktdaten liegen aber ausschließlich im privaten Master-Sheet
 (für uns nicht zugänglich) und fließen ohnehin erst nach dem jeweiligen
-Match ein — für den einmaligen Vorab-Import in Teilprojekt 1 bleibt es daher
-bei Teams/Courts/Matches/Config aus dem öffentlichen Sheet; das deckt sich
-mit dem ursprünglichen Scope.
+Match ein — für die einmalige Migration in Teilprojekt 1 bleibt es daher bei
+Teams/Courts/Matches/Config aus dem öffentlichen Sheet; das deckt sich mit
+dem ursprünglichen Scope.
 
 ## Fehlerbehandlung
 
@@ -170,8 +174,11 @@ mit dem ursprünglichen Scope.
 Automatisiert, keine manuelle Test-Checkliste:
 
 1. **Parser-Unit-Tests** — Node's eingebauter Test-Runner (`node --test`,
-   keine Dependency) für den CSV/Sheet-Import-Parser: reale Sheet-Ausschnitte
-   → erwartete Teams/Courts/Matches.
+   keine Dependency) für die Parsing-Logik des einmaligen Migrations-Skripts:
+   reale Sheet-Ausschnitte → erwartete Teams/Courts/Matches. Auch wenn das
+   Skript selbst kein dauerhaftes App-Feature ist, befüllt es die echten
+   Turnierdaten für Juli — Fehler dort wirken sich direkt auf ein laufendes
+   Turnier aus, daher lohnt sich die Absicherung trotzdem.
 2. **RLS/Datenbank-Tests** — Supabase CLI mit lokalem Dev-Stack (`supabase
    start`, Docker-basiert, kein Cloud-Projekt nötig). Testsuite
    (`node --test` + `@supabase/supabase-js`) meldet sich als Admin/Scorer/
@@ -198,3 +205,6 @@ Umsetzungsplanung.
 - Spieler-Kader pro Team
 - Individuelle Benutzerkonten / feingranulare Court-Rechte
 - Offline-Fähigkeit (Konnektivität am Turnierort wird als stabil erwartet)
+- Wiederverwendbares Import-Tool in der Admin-App — die Datenübernahme fürs
+  Juli-Turnier läuft als einmaliges Migrations-Skript; künftige Turniere
+  brauchen ein neues Skript oder manuelle Erfassung über die Admin-Formulare
