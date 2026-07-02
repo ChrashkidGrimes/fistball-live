@@ -25,7 +25,9 @@ function renderNav() {
     ['categories', 'Kategorien'],
     ['courts', 'Courts'],
     ['teams', 'Teams'],
+    ['players', 'Kader'],
     ['matches', 'Matches'],
+    ['game-report', 'Game Report'],
   ];
   nav.innerHTML = items.map(([key, label]) =>
     `<button data-screen="${key}">${label}</button>`).join('') +

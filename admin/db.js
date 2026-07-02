@@ -91,3 +91,25 @@ export async function startMatch(id) {
   const { error } = await getClient().rpc('start_match', { p_match_id: id });
   if (error) throw error;
 }
+
+export async function listPlayers(teamId) {
+  const { data, error } = await getClient().from('players').select().eq('team_id', teamId).order('jersey_number');
+  if (error) throw error;
+  return data;
+}
+
+export async function createPlayer({ team_id, family_name, given_name, jersey_number, role, player_position, staff_role }) {
+  const { error } = await getClient().from('players').insert({
+    team_id, family_name, given_name,
+    jersey_number: jersey_number || null,
+    role,
+    player_position: player_position || null,
+    staff_role: staff_role || null,
+  });
+  if (error) throw error;
+}
+
+export async function deletePlayer(id) {
+  const { error } = await getClient().from('players').delete().eq('id', id);
+  if (error) throw error;
+}
