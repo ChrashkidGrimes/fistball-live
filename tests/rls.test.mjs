@@ -96,17 +96,14 @@ test('scorer can start a match via start_match()', async () => {
   await service.from('matches').update({ status: 'scheduled' }).eq('id', matchId);
 });
 
-test('scorer can insert a set, admin cannot', async () => {
+test('neither scorer nor admin can insert a set directly (must use record_point RPC)', async () => {
   const scorer = await signIn('scorer@fistball-ems.local', scorerPassword);
-  const { data, error } = await scorer.from('sets')
-    .insert({ match_id: matchId, set_number: 1, points_a: 11, points_b: 5 }).select();
-  assert.equal(error, null);
-  assert.equal(data.length, 1);
+  const { error: scorerError } = await scorer.from('sets')
+    .insert({ match_id: matchId, set_number: 1, points_a: 11, points_b: 5 });
+  assert.ok(scorerError, 'scorer should not be able to insert sets directly (Teilprojekt 2 revoked this)');
 
   const admin = await signIn('admin@fistball-ems.local', adminPassword);
   const { error: adminError } = await admin.from('sets')
     .insert({ match_id: matchId, set_number: 2, points_a: 11, points_b: 5 });
-  assert.ok(adminError, 'admin should not be able to insert sets');
-
-  await service.from('sets').delete().eq('match_id', matchId);
+  assert.ok(adminError, 'admin should not be able to insert sets directly either');
 });
