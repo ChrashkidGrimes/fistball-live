@@ -83,6 +83,15 @@ Teilprojekt 1:
    2-Punkte-Vorsprung-Regel ab 10:10 ist 15 Punkte nur erreichbar, wenn der
    Gegner exakt bei 14 steht — die Fallunterscheidung ist dadurch überflüssig).
 6. Bei erfüllter Sieg-Bedingung: `winner_team_id` auf dem Satz setzen.
+7. `event_type` des neuen `point_events`-Eintrags ist standardmäßig
+   `'point'`.
+
+**`tag_last_point(p_match_id uuid, p_set_number integer, p_detail text)`**:
+optionale Nacherfassung von Detail-Infos (z. B. `'ace'`, `'service_fault'`)
+für den zuletzt erfassten Punkt — setzt dessen `event_type` auf `p_detail`
+nachträglich. Gleiche Rollen-/Status-Prüfung wie `record_point`. Blockiert
+den schnellen Tap-Flow nicht: die UI zeigt optionale Tag-Buttons erst nach
+dem Tap an, das Zählen selbst wartet nicht darauf.
 
 **`undo_last_point(p_match_id uuid, p_set_number integer)`**: gleiche
 Rollen-/Status-Prüfung wie `record_point` (`admin`/`scorer`, Match muss
@@ -138,7 +147,10 @@ aber auch von Admin nutzbar zur Kontrolle):
 4. **Live-Scoring**: große Tap-Flächen "+1 Team A" / "+1 Team B" (→
    `record_point`), Undo-Button (→ `undo_last_point`, mehrfach klickbar),
    Timeout-Buttons pro Team (→ `record_timeout`). Anzeige des aktuellen
-   Satzstands plus bereits abgeschlossener Sätze.
+   Satzstands plus bereits abgeschlossener Sätze. Nach jedem Tap erscheinen
+   optionale, nicht blockierende Detail-Buttons ("Ass", "Aufschlagfehler")
+   für genau diesen Punkt (→ `tag_last_point`) — der Zähler wartet nicht
+   darauf.
 5. **Karten**: Spieler-Dropdown pro Team (aus `players`, gefiltert auf
    `role = 'player'`) + Y/YR/R-Auswahl → `player_events`.
 6. **Auswechslung**: Spieler-raus-/Spieler-rein-Dropdown aus dem Kader des
