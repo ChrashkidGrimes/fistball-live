@@ -8,6 +8,15 @@ import {
 
 let currentMatchId = null;
 
+// Bumped on every selectMatch() call. Each render step (after its own
+// await) checks its captured generation against the current one and
+// aborts without touching the DOM if a newer selectMatch() has since
+// started — otherwise two overlapping render chains (e.g. two dropdown
+// onchange handlers firing close together) can both append sections into
+// whatever #gameReportBody instance happens to be current when each
+// resumes, producing duplicated/corrupted DOM.
+let renderGeneration = 0;
+
 function currentSetNumber(sets) {
   for (let n = 1; n <= 99; n++) {
     const set = sets.find((s) => s.set_number === n);
@@ -16,8 +25,9 @@ function currentSetNumber(sets) {
   return 1;
 }
 
-async function renderHeader(match) {
+async function renderHeader(match, myGeneration) {
   const referees = await listRefereeAssignments(match.id);
+  if (myGeneration !== renderGeneration) return;
   const refereeList = referees.length
     ? referees.map((r) => `${escapeHtml(r.role)}: ${escapeHtml(r.referee_name)}`).join(', ')
     : '—';
@@ -43,12 +53,13 @@ async function renderHeader(match) {
     };
   }
   if (match.status === 'live') {
-    await renderScoringBody(match);
+    await renderScoringBody(match, myGeneration);
   }
 }
 
-async function renderScoringBody(match) {
+async function renderScoringBody(match, myGeneration) {
   const sets = await listSets(match.id);
+  if (myGeneration !== renderGeneration) return;
   const setNumber = currentSetNumber(sets);
   const current = sets.find((s) => s.set_number === setNumber) || { points_a: 0, points_b: 0, timeouts_a: 0, timeouts_b: 0 };
 
@@ -94,16 +105,20 @@ async function renderScoringBody(match) {
   document.getElementById('undoBtn').onclick = withErrorHandling(() => undoLastPoint(match.id, setNumber));
   document.getElementById('tagAceBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'ace'));
   document.getElementById('tagFaultBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'service_fault'));
-  await renderCardsSection(match);
-  await renderSubstitutionsSection(match, setNumber);
+
+  if (myGeneration !== renderGeneration) return;
+  await renderCardsSection(match, myGeneration);
+  if (myGeneration !== renderGeneration) return;
+  await renderSubstitutionsSection(match, setNumber, myGeneration);
 }
 
-async function renderCardsSection(match) {
+async function renderCardsSection(match, myGeneration) {
   const [playersA, playersB, events] = await Promise.all([
     listPlayers(match.team_a_id),
     listPlayers(match.team_b_id),
     listPlayerEvents(match.id),
   ]);
+  if (myGeneration !== renderGeneration) return;
   const players = [...playersA, ...playersB].filter((p) => p.role === 'player');
   const playerOptions = players.map((p) =>
     `<option value="${p.id}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)} (#${p.jersey_number ?? '-'})</option>`
@@ -147,29 +162,19 @@ async function renderCardsSection(match) {
   };
 }
 
-async function renderSubstitutionsSection(match, setNumber) {
+async function renderSubstitutionsSection(match, setNumber, myGeneration) {
   const [playersA, playersB, subs] = await Promise.all([
     listPlayers(match.team_a_id),
     listPlayers(match.team_b_id),
     listSubstitutions(match.id),
   ]);
+  if (myGeneration !== renderGeneration) return;
   const players = [...playersA, ...playersB].filter((p) => p.role === 'player');
   const playerOptions = players.map((p) =>
     `<option value="${p.id}" data-team="${playersA.includes(p) ? match.team_a_id : match.team_b_id}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)}</option>`
   ).join('');
 
   const body = document.getElementById('gameReportBody');
-  // Remove any existing substitution sections to prevent duplicates from concurrent renders
-  const existingSubList = body.querySelector('#gr_subs_list');
-  if (existingSubList) {
-    const parent = existingSubList.parentElement;
-    const h4 = parent.querySelector('h4');
-    if (h4) h4.remove();
-    existingSubList.remove();
-  }
-  const existingSubForm = body.querySelector('#subForm');
-  if (existingSubForm) existingSubForm.remove();
-
   body.insertAdjacentHTML('beforeend', `
     <h4>Auswechslungen</h4>
     <div id="gr_subs_list">
@@ -206,9 +211,11 @@ async function renderSubstitutionsSection(match, setNumber) {
 }
 
 async function selectMatch(matchId) {
+  const myGeneration = ++renderGeneration;
   currentMatchId = matchId;
   const match = await getMatch(matchId);
-  await renderHeader(match);
+  if (myGeneration !== renderGeneration) return;
+  await renderHeader(match, myGeneration);
 }
 
 async function render(main) {
