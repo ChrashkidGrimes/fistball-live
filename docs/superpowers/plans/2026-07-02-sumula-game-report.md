@@ -435,7 +435,7 @@ git commit -m "feat: add RLS for roster/cards/substitutions/incidents, tighten s
 
 **Interfaces:**
 - Consumes: `matches`, `sets`, `point_events`, `public.auth_role()`.
-- Produces: `record_point(p_match_id uuid, p_set_number integer, p_team text)` and `tag_last_point(p_match_id uuid, p_set_number integer, p_detail text)` RPCs — Task 8 (live-scoring UI) calls both by these exact names via `supabase.rpc(...)`.
+- Produces: `public.get_live_match(p_match_id uuid) returns matches` — an internal helper (NOT granted to `authenticated`, only callable from other `security definer` functions) that Tasks 4 and 5 also call, so its exact name and return type matter beyond this task. Produces `record_point(p_match_id uuid, p_set_number integer, p_team text)` and `tag_last_point(p_match_id uuid, p_set_number integer, p_detail text)` RPCs — Task 8 (live-scoring UI) calls both by these exact names via `supabase.rpc(...)`.
 
 - [ ] **Step 1: Create the migration file**
 
@@ -446,6 +446,37 @@ Run: `npx supabase migration new record_point`
 Put this in `supabase/migrations/<timestamp>_record_point.sql`:
 
 ```sql
+-- Shared validation used by every scoring RPC (record_point, tag_last_point,
+-- undo_last_point in Task 4, record_timeout in Task 5): checks the caller's
+-- role and that the match exists and is live, and returns the match row.
+-- Deliberately NOT granted to `authenticated` — it's an internal building
+-- block, only ever called from within another security definer function
+-- (which runs as that function's owner, so no separate grant is needed for
+-- those internal calls to succeed).
+create or replace function public.get_live_match(p_match_id uuid)
+returns matches
+language plpgsql security definer set search_path = public as $$
+declare
+  v_match matches%rowtype;
+begin
+  if public.auth_role() not in ('admin', 'scorer') then
+    raise exception 'not authorized';
+  end if;
+
+  select * into v_match from matches where id = p_match_id;
+  if v_match.id is null then
+    raise exception 'match not found';
+  end if;
+  if v_match.status <> 'live' then
+    raise exception 'match is not live';
+  end if;
+
+  return v_match;
+end;
+$$;
+
+revoke all on function public.get_live_match(uuid) from public;
+
 create or replace function public.record_point(p_match_id uuid, p_set_number integer, p_team text)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -456,20 +487,11 @@ declare
   v_new_b integer;
   v_team_id uuid;
 begin
-  if public.auth_role() not in ('admin', 'scorer') then
-    raise exception 'not authorized';
-  end if;
   if p_team not in ('a', 'b') then
     raise exception 'invalid team: %', p_team;
   end if;
 
-  select * into v_match from matches where id = p_match_id;
-  if v_match.id is null then
-    raise exception 'match not found';
-  end if;
-  if v_match.status <> 'live' then
-    raise exception 'match is not live';
-  end if;
+  v_match := public.get_live_match(p_match_id);
 
   select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
   if v_set.id is null then
@@ -515,17 +537,7 @@ declare
   v_set sets%rowtype;
   v_last_event point_events%rowtype;
 begin
-  if public.auth_role() not in ('admin', 'scorer') then
-    raise exception 'not authorized';
-  end if;
-
-  select * into v_match from matches where id = p_match_id;
-  if v_match.id is null then
-    raise exception 'match not found';
-  end if;
-  if v_match.status <> 'live' then
-    raise exception 'match is not live';
-  end if;
+  v_match := public.get_live_match(p_match_id);
 
   select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
   if v_set.id is null then
@@ -684,7 +696,7 @@ git commit -m "feat: add record_point and tag_last_point RPCs with rule enforcem
 - Modify: `tests/game-report-rpc.test.mjs` (append)
 
 **Interfaces:**
-- Consumes: same fixture (`teamAId`, `matchId`, `scorer` client) already set up in `tests/game-report-rpc.test.mjs`'s `before()` hook from Task 3 — do not duplicate the fixture, append tests inside the same file after the existing ones.
+- Consumes: same fixture (`teamAId`, `matchId`, `scorer` client) already set up in `tests/game-report-rpc.test.mjs`'s `before()` hook from Task 3 — do not duplicate the fixture, append tests inside the same file after the existing ones. Consumes `public.get_live_match(uuid)` from Task 3 — do not redefine it, just call it.
 - Produces: `undo_last_point(p_match_id uuid, p_set_number integer)` RPC — Task 8 calls this by name.
 
 - [ ] **Step 1: Create the migration file**
@@ -704,17 +716,7 @@ declare
   v_set sets%rowtype;
   v_last_event point_events%rowtype;
 begin
-  if public.auth_role() not in ('admin', 'scorer') then
-    raise exception 'not authorized';
-  end if;
-
-  select * into v_match from matches where id = p_match_id;
-  if v_match.id is null then
-    raise exception 'match not found';
-  end if;
-  if v_match.status <> 'live' then
-    raise exception 'match is not live';
-  end if;
+  v_match := public.get_live_match(p_match_id);
 
   select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
   if v_set.id is null then
@@ -804,7 +806,7 @@ git commit -m "feat: add undo_last_point RPC, supports repeated undo"
 - Modify: `tests/game-report-rpc.test.mjs` (append)
 
 **Interfaces:**
-- Consumes: same fixture as Tasks 3–4 (append, don't duplicate).
+- Consumes: same fixture as Tasks 3–4 (append, don't duplicate). Consumes `public.get_live_match(uuid)` from Task 3 — do not redefine it, just call it.
 - Produces: `record_timeout(p_match_id uuid, p_set_number integer, p_team text)` RPC — Task 8 calls this by name.
 
 - [ ] **Step 1: Create the migration file**
@@ -823,20 +825,11 @@ declare
   v_match matches%rowtype;
   v_set sets%rowtype;
 begin
-  if public.auth_role() not in ('admin', 'scorer') then
-    raise exception 'not authorized';
-  end if;
   if p_team not in ('a', 'b') then
     raise exception 'invalid team: %', p_team;
   end if;
 
-  select * into v_match from matches where id = p_match_id;
-  if v_match.id is null then
-    raise exception 'match not found';
-  end if;
-  if v_match.status <> 'live' then
-    raise exception 'match is not live';
-  end if;
+  v_match := public.get_live_match(p_match_id);
 
   select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
   if v_set.id is null then
