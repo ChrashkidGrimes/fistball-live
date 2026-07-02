@@ -37,6 +37,11 @@ before(async () => {
 });
 
 after(async () => {
+  // Delete children before the tournament: matches/teams reference categories
+  // with ON DELETE RESTRICT, so a plain tournament delete (which only cascades
+  // as far as categories) fails silently otherwise and leaves fixtures behind.
+  await service.from('matches').delete().eq('id', matchId);
+  await service.from('teams').delete().in('id', [teamAId, teamBId]);
   await service.from('tournaments').delete().eq('id', tournamentId);
 });
 
