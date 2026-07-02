@@ -2,6 +2,7 @@ import { registerScreen } from '../app.js';
 import {
   escapeHtml, listTournaments, listCategories, listMatches, getMatch, startMatch, listRefereeAssignments,
   listSets, recordPoint, undoLastPoint, recordTimeout, tagLastPoint,
+  listPlayers, createPlayerEvent, listPlayerEvents,
 } from '../db.js';
 
 let currentMatchId = null;
@@ -92,6 +93,56 @@ async function renderScoringBody(match) {
   document.getElementById('undoBtn').onclick = withErrorHandling(() => undoLastPoint(match.id, setNumber));
   document.getElementById('tagAceBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'ace'));
   document.getElementById('tagFaultBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'service_fault'));
+  await renderCardsSection(match);
+}
+
+async function renderCardsSection(match) {
+  const [playersA, playersB, events] = await Promise.all([
+    listPlayers(match.team_a_id),
+    listPlayers(match.team_b_id),
+    listPlayerEvents(match.id),
+  ]);
+  const players = [...playersA, ...playersB].filter((p) => p.role === 'player');
+  const playerOptions = players.map((p) =>
+    `<option value="${p.id}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)} (#${p.jersey_number ?? '-'})</option>`
+  ).join('');
+
+  const body = document.getElementById('gameReportBody');
+  body.insertAdjacentHTML('beforeend', `
+    <h4>Karten</h4>
+    <div id="gr_cards_list">
+      ${events.map((e) =>
+        `<div>${escapeHtml(e.player.given_name)} ${escapeHtml(e.player.family_name)}: ${escapeHtml(e.event_type)}</div>`
+      ).join('')}
+    </div>
+    <form id="cardForm" class="entity-form">
+      <label>Spieler<select id="card_player">${playerOptions}</select></label>
+      <label>Karte
+        <select id="card_type">
+          <option value="Y">Gelb</option>
+          <option value="YR">Gelb-Rot</option>
+          <option value="R">Rot</option>
+        </select>
+      </label>
+      <button type="submit">Erfassen</button>
+    </form>
+  `);
+
+  document.getElementById('cardForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('gameReportError');
+    try {
+      await createPlayerEvent({
+        match_id: match.id,
+        player_id: document.getElementById('card_player').value,
+        event_type: document.getElementById('card_type').value,
+      });
+      await selectMatch(match.id);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  };
 }
 
 async function selectMatch(matchId) {

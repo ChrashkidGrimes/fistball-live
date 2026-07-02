@@ -86,3 +86,16 @@ test('scorer can record points, tag a detail, use undo, and record a timeout', a
   await page.click('#timeoutA');
   await expect(page.locator('#gr_timeouts_a')).toHaveText('1');
 });
+
+test('scorer can record a card for a player', async ({ page }) => {
+  await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.click('button[data-screen=game-report]');
+  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#gr_category', { label: 'Game Report Category' });
+
+  await page.selectOption('#card_player', { label: 'Max Mustermann (#7)' });
+  await page.selectOption('#card_type', 'Y');
+  await page.click('#cardForm button[type=submit]');
+  await expect(page.locator('#gr_cards_list')).toContainText('Max Mustermann');
+  await expect(page.locator('#gr_cards_list')).toContainText('Y');
+});

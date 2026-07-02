@@ -158,3 +158,18 @@ export async function tagLastPoint(matchId, setNumber, detail) {
   const { error } = await getClient().rpc('tag_last_point', { p_match_id: matchId, p_set_number: setNumber, p_detail: detail });
   if (error) throw error;
 }
+
+export async function createPlayerEvent({ match_id, player_id, event_type }) {
+  const { error } = await getClient().from('player_events').insert({ match_id, player_id, event_type });
+  if (error) throw error;
+}
+
+export async function listPlayerEvents(matchId) {
+  const { data, error } = await getClient()
+    .from('player_events')
+    .select('id, event_type, created_at, player:player_id(family_name, given_name, jersey_number)')
+    .eq('match_id', matchId)
+    .order('created_at');
+  if (error) throw error;
+  return data;
+}
