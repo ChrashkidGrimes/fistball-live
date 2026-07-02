@@ -18,6 +18,7 @@
 - Admin is the only role that sets `matches.status = 'finished'` — unchanged from Teilprojekt 1. This plan does NOT add any automatic transition to `finished`.
 - `players.team_id → teams(id) on delete cascade`; `player_events.player_id`, `substitutions.player_out_id`/`player_in_id` → `players(id) on delete restrict` (prevents silent loss of card/substitution history).
 - Local dev DB accumulates fixtures across test runs (documented Teilprojekt-1 characteristic) — run `npx supabase db reset && node scripts/seed-roles.mjs` before a clean full-suite run if you hit unexplained duplicate-key errors.
+- `admin/screens/game-report.js` uses a module-level `renderGeneration` counter (bumped in `selectMatch`) to guard against overlapping render chains — every render function past `selectMatch` takes a `myGeneration` parameter and checks it against `renderGeneration` after each `await`, aborting without touching the DOM if a newer `selectMatch()` call has since started. This was added in a post-Task-10 fix after a review found that rapid dropdown changes could trigger two concurrent render chains writing into the same `#gameReportBody`, producing duplicated sections. Any new section-renderer added to this file must follow the same pattern (accept and check `myGeneration`) rather than re-inventing ad hoc DOM deduplication.
 - This Supabase project has `auto_expose_new_tables` off — every new table needs explicit `grant select/insert/update/delete ... to anon, authenticated` (or `service_role` for the migration's own test) in addition to RLS policies, or PostgREST rejects all access before RLS is even evaluated (learned the hard way in Teilprojekt 1 Tasks 2/3).
 
 ---
@@ -1925,11 +1926,12 @@ function setsWonPerTeam(sets, match) {
 }
 ```
 
-Add `renderIncidentsSection`:
+Add `renderIncidentsSection`. Note it takes a `myGeneration` parameter and checks it against the module-level `renderGeneration` before touching the DOM, same as `renderCardsSection`/`renderSubstitutionsSection` — this guard was added in a post-Task-10 fix to prevent overlapping renders (e.g. two dropdown `onchange` handlers firing close together) from writing duplicate sections into a stale `#gameReportBody`. Follow the exact same pattern here:
 
 ```js
-async function renderIncidentsSection(match) {
+async function renderIncidentsSection(match, myGeneration) {
   const incidents = await listMatchIncidents(match.id);
+  if (myGeneration !== renderGeneration) return;
   const body = document.getElementById('gameReportBody');
   body.insertAdjacentHTML('beforeend', `
     <h4>Sonstiges</h4>
@@ -1971,8 +1973,9 @@ async function renderIncidentsSection(match) {
 In `renderScoringBody`, right after computing `sets` and `setNumber` (before building the `body.innerHTML` template), add the decided-match banner into the template. Change the start of `renderScoringBody` from:
 
 ```js
-async function renderScoringBody(match) {
+async function renderScoringBody(match, myGeneration) {
   const sets = await listSets(match.id);
+  if (myGeneration !== renderGeneration) return;
   const setNumber = currentSetNumber(sets);
   const current = sets.find((s) => s.set_number === setNumber) || { points_a: 0, points_b: 0, timeouts_a: 0, timeouts_b: 0 };
 
@@ -1984,8 +1987,9 @@ async function renderScoringBody(match) {
 to:
 
 ```js
-async function renderScoringBody(match) {
+async function renderScoringBody(match, myGeneration) {
   const sets = await listSets(match.id);
+  if (myGeneration !== renderGeneration) return;
   const setNumber = currentSetNumber(sets);
   const current = sets.find((s) => s.set_number === setNumber) || { points_a: 0, points_b: 0, timeouts_a: 0, timeouts_b: 0 };
   const { wonA, wonB } = setsWonPerTeam(sets, match);
@@ -1998,10 +2002,11 @@ async function renderScoringBody(match) {
     <h4>Satz ${setNumber}</h4>
 ```
 
-At the end of `renderScoringBody`, after `await renderSubstitutionsSection(match, setNumber);`, add:
+At the end of `renderScoringBody`, after `await renderSubstitutionsSection(match, setNumber, myGeneration);`, add:
 
 ```js
-  await renderIncidentsSection(match);
+  if (myGeneration !== renderGeneration) return;
+  await renderIncidentsSection(match, myGeneration);
 ```
 
 - [ ] **Step 5: Run the test**
