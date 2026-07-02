@@ -85,8 +85,15 @@ unverändert.
 (ersetzt das bisherige direkte `UPDATE matches SET status = 'finished'` durch
 Admin):
 
-1. Rollenprüfung (`admin`), Match muss `status = 'live'` sein — gleiche
-   Vorbedingung wie bisher.
+1. Rollenprüfung (`admin`), Match darf noch nicht `status = 'finished'` sein
+   (Idempotenz-Schutz). **Korrektur ggü. einem ersten Entwurf dieser Spec:**
+   anders als bei `record_point` gab es beim bisherigen direkten
+   `UPDATE ... SET status = 'finished'` **keine** Vorbedingung auf `'live'` —
+   Admins finishen heute auch Matches, die nie über `start_match()` liefen
+   (z. B. Ergebnis nachträglich ohne Live-Scoring erfasst, siehe bestehender
+   e2e-Test `admin can create a match and mark it finished`). Diese Fähigkeit
+   bleibt erhalten: `finish_match()` erlaubt sowohl `status = 'scheduled'`
+   als auch `status = 'live'` als Ausgangszustand.
 2. **Ohne Override** (`p_winner_team_id_override is null`, der Normalfall):
    berechnet den Gewinner aus den vorhandenen `sets`-Zeilen — das Team mit der
    Mehrheit der laut `best_of` nötigen gewonnenen Sätze
@@ -173,7 +180,7 @@ Match-Anlege-/Bearbeiten-Formulars aus Teilprojekt 1):
   `team_a_id`/`team_b_id` `null` ist.
 - Der bestehende "Als beendet markieren"-Button (Teilprojekt 1) ruft jetzt
   `finish_match(p_match_id)` statt direktem Update auf; Fehlermeldungen
-  (Match nicht `live`, kein eindeutiger Gewinner) erscheinen inline wie
+  (Match bereits `finished`, kein eindeutiger Gewinner) erscheinen inline wie
   gewohnt.
 - Zusätzlicher Link/Button "Forfeit / manuelles Ergebnis" öffnet einen
   Team-A/Team-B-Auswahldialog und ruft `finish_match(p_match_id,
@@ -184,7 +191,7 @@ Match-Anlege-/Bearbeiten-Formulars aus Teilprojekt 1):
 
 - Generator-Vorschau meldet fehlende Slots, statt eine unvollständige Runde
   im Formular anzuzeigen.
-- `finish_match()`-Ablehnungen (falsche Rolle, Match nicht `live`, kein
+- `finish_match()`-Ablehnungen (falsche Rolle, Match bereits `finished`, kein
   eindeutiger Gewinner laut Sätzen) kommen als Fehlermeldung vom Server
   zurück und werden inline angezeigt — gleiches Muster wie in Teilprojekt 1/2.
 - Regenerierung mit vorhandenen `live`/`finished`-Matches wird serverseitig
@@ -195,8 +202,9 @@ Match-Anlege-/Bearbeiten-Formulars aus Teilprojekt 1):
 
 - **RPC/RLS-Tests** (`node --test` gegen lokalen Supabase-Stack):
   `finish_match` — Gewinnerberechnung bei regulärem Ende und bei
-  Hard-Cap-Sätzen, Ablehnung bei nicht eindeutigem Ergebnis, Ablehnung bei
-  `status <> 'live'`, Auflösung eines abhängigen Matches (Sieger- und
+  Hard-Cap-Sätzen, Ablehnung bei nicht eindeutigem Ergebnis, Erfolg sowohl aus
+  `status = 'scheduled'` als auch `status = 'live'`, Ablehnung bei bereits
+  `status = 'finished'`, Auflösung eines abhängigen Matches (Sieger- und
   Verlierer-Fall), Override-Pfad (Finish ohne vollständigen Satzstand mit
   `p_winner_team_id_override`, inklusive Ablehnung eines Override-Werts, der
   keines der beiden Match-Teams ist), Bestätigung dass Admin
