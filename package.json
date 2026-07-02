@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test:unit": "node --test scripts/__tests__/*.test.mjs",
-    "test:rls": "node --test tests/rls.test.mjs tests/migrate-sheet-data.test.mjs tests/schema.test.mjs",
+    "test:rls": "node --test tests/rls.test.mjs tests/migrate-sheet-data.test.mjs tests/schema.test.mjs tests/schema-sumula.test.mjs tests/game-report-rls.test.mjs tests/game-report-rpc.test.mjs",
     "test:e2e": "playwright test",
     "test": "npm run test:unit && npm run test:rls && npm run test:e2e",
     "supabase": "supabase"
