@@ -99,3 +99,29 @@ test('scorer can record a card for a player', async ({ page }) => {
   await expect(page.locator('#gr_cards_list')).toContainText('Max Mustermann');
   await expect(page.locator('#gr_cards_list')).toContainText('Y');
 });
+
+test('scorer can record a substitution', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.click('button[data-screen=players]');
+  await page.selectOption('#player_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#player_category', { label: 'Game Report Category' });
+  await page.selectOption('#player_team', { label: 'Game Report Team A' });
+  await page.fill('#player_family_name', 'Ersatz');
+  await page.fill('#player_given_name', 'Erik');
+  await page.fill('#player_jersey_number', '12');
+  await page.click('#playerForm button[type=submit]');
+  await page.click('#logoutBtn');
+  await page.waitForURL('/');
+  await page.waitForSelector('#email');
+
+  await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.click('button[data-screen=game-report]');
+  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#gr_category', { label: 'Game Report Category' });
+
+  await page.selectOption('#sub_player_out', { label: 'Max Mustermann' });
+  await page.selectOption('#sub_player_in', { label: 'Erik Ersatz' });
+  await page.click('#subForm button[type=submit]');
+  await expect(page.locator('#gr_subs_list')).toContainText('Max Mustermann');
+  await expect(page.locator('#gr_subs_list')).toContainText('Erik Ersatz');
+});

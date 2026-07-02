@@ -173,3 +173,18 @@ export async function listPlayerEvents(matchId) {
   if (error) throw error;
   return data;
 }
+
+export async function createSubstitution({ match_id, set_number, team_id, player_out_id, player_in_id }) {
+  const { error } = await getClient().from('substitutions').insert({ match_id, set_number, team_id, player_out_id, player_in_id });
+  if (error) throw error;
+}
+
+export async function listSubstitutions(matchId) {
+  const { data, error } = await getClient()
+    .from('substitutions')
+    .select('id, set_number, created_at, player_out:player_out_id(family_name, given_name), player_in:player_in_id(family_name, given_name)')
+    .eq('match_id', matchId)
+    .order('created_at');
+  if (error) throw error;
+  return data;
+}

@@ -3,6 +3,7 @@ import {
   escapeHtml, listTournaments, listCategories, listMatches, getMatch, startMatch, listRefereeAssignments,
   listSets, recordPoint, undoLastPoint, recordTimeout, tagLastPoint,
   listPlayers, createPlayerEvent, listPlayerEvents,
+  createSubstitution, listSubstitutions,
 } from '../db.js';
 
 let currentMatchId = null;
@@ -94,6 +95,7 @@ async function renderScoringBody(match) {
   document.getElementById('tagAceBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'ace'));
   document.getElementById('tagFaultBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'service_fault'));
   await renderCardsSection(match);
+  await renderSubstitutionsSection(match, setNumber);
 }
 
 async function renderCardsSection(match) {
@@ -136,6 +138,64 @@ async function renderCardsSection(match) {
         match_id: match.id,
         player_id: document.getElementById('card_player').value,
         event_type: document.getElementById('card_type').value,
+      });
+      await selectMatch(match.id);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  };
+}
+
+async function renderSubstitutionsSection(match, setNumber) {
+  const [playersA, playersB, subs] = await Promise.all([
+    listPlayers(match.team_a_id),
+    listPlayers(match.team_b_id),
+    listSubstitutions(match.id),
+  ]);
+  const players = [...playersA, ...playersB].filter((p) => p.role === 'player');
+  const playerOptions = players.map((p) =>
+    `<option value="${p.id}" data-team="${playersA.includes(p) ? match.team_a_id : match.team_b_id}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)}</option>`
+  ).join('');
+
+  const body = document.getElementById('gameReportBody');
+  // Remove any existing substitution sections to prevent duplicates from concurrent renders
+  const existingSubList = body.querySelector('#gr_subs_list');
+  if (existingSubList) {
+    const parent = existingSubList.parentElement;
+    const h4 = parent.querySelector('h4');
+    if (h4) h4.remove();
+    existingSubList.remove();
+  }
+  const existingSubForm = body.querySelector('#subForm');
+  if (existingSubForm) existingSubForm.remove();
+
+  body.insertAdjacentHTML('beforeend', `
+    <h4>Auswechslungen</h4>
+    <div id="gr_subs_list">
+      ${subs.map((s) =>
+        `<div>Satz ${s.set_number}: ${escapeHtml(s.player_out.given_name)} ${escapeHtml(s.player_out.family_name)} → ${escapeHtml(s.player_in.given_name)} ${escapeHtml(s.player_in.family_name)}</div>`
+      ).join('')}
+    </div>
+    <form id="subForm" class="entity-form">
+      <label>Spieler raus<select id="sub_player_out">${playerOptions}</select></label>
+      <label>Spieler rein<select id="sub_player_in">${playerOptions}</select></label>
+      <button type="submit">Erfassen</button>
+    </form>
+  `);
+
+  document.getElementById('subForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('gameReportError');
+    try {
+      const outSelect = document.getElementById('sub_player_out');
+      const teamId = outSelect.selectedOptions[0].dataset.team;
+      await createSubstitution({
+        match_id: match.id,
+        set_number: setNumber,
+        team_id: teamId,
+        player_out_id: outSelect.value,
+        player_in_id: document.getElementById('sub_player_in').value,
       });
       await selectMatch(match.id);
     } catch (err) {
