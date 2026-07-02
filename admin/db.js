@@ -113,3 +113,22 @@ export async function deletePlayer(id) {
   const { error } = await getClient().from('players').delete().eq('id', id);
   if (error) throw error;
 }
+
+export async function getMatch(matchId) {
+  const { data, error } = await getClient()
+    .from('matches')
+    .select('id, status, best_of, round_label, team_a_id, team_b_id, team_a:team_a_id(id, name), team_b:team_b_id(id, name), court:court_id(name)')
+    .eq('id', matchId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listRefereeAssignments(matchId) {
+  const { data, error } = await getClient()
+    .from('referee_assignments')
+    .select('referee_name, role')
+    .eq('match_id', matchId);
+  if (error) throw error;
+  return data;
+}

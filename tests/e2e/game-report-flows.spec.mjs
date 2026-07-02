@@ -45,3 +45,24 @@ test('admin can set up a tournament and add a player to the roster', async ({ pa
   await page.click('#playerForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Max Mustermann');
 });
+
+test('admin can select a match in Game Report and start it', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  await page.click('button[data-screen=matches]');
+  await page.selectOption('#match_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#match_category', { label: 'Game Report Category' });
+  await page.selectOption('#match_team_a', { label: 'Game Report Team A' });
+  await page.selectOption('#match_team_b', { label: 'Game Report Team B' });
+  await page.click('#matchForm button[type=submit]');
+  await expect(page.locator('table tbody')).toContainText('Game Report Team A');
+
+  await page.click('button[data-screen=game-report]');
+  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#gr_category', { label: 'Game Report Category' });
+  await expect(page.locator('#gameReportHeader')).toContainText('Game Report Team A');
+  await expect(page.locator('#gameReportHeader')).toContainText('scheduled');
+
+  await page.click('#startMatchBtn');
+  await expect(page.locator('#gameReportHeader')).toContainText('live');
+});
