@@ -54,7 +54,7 @@ Zwei unabhängige Bausteine in der bestehenden Admin-App:
 | Spalte | Änderung | Zweck |
 |---|---|---|
 | `team_a_id`, `team_b_id` | `NOT NULL` → nullable | Ein Match kann jetzt "auf Auflösung wartend" ohne bekanntes Team existieren |
-| `team_a_source_match_id` | neu, `uuid references matches(id) on delete set null` | Quell-Match für Team A, falls nicht fest zugewiesen |
+| `team_a_source_match_id` | neu, `uuid references matches(id) on delete restrict` | Quell-Match für Team A, falls nicht fest zugewiesen. `restrict` statt `set null`: würde die FK beim Löschen des Quell-Matches auf `null` gesetzt, verletzt das sofort den XOR-Constraint (beide Seiten `null`) — das Löschen eines noch benötigten Quell-Matches muss also ohnehin explizit fehlschlagen, `restrict` macht das ohne Umweg über einen Constraint-Fehler |
 | `team_a_source_outcome` | neu, `text check (team_a_source_outcome in ('winner','loser'))` | Ob Team A der Sieger oder Verlierer des Quell-Matches ist |
 | `team_b_source_match_id` | neu, analog zu `team_a_source_match_id` | Quell-Match für Team B |
 | `team_b_source_outcome` | neu, analog zu `team_a_source_outcome` | Sieger/Verlierer-Auswahl für Team B |
