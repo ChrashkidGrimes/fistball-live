@@ -1,9 +1,18 @@
 import { registerScreen } from '../app.js';
 import {
   escapeHtml, listTournaments, listCategories, listMatches, getMatch, startMatch, listRefereeAssignments,
+  listSets, recordPoint, undoLastPoint, recordTimeout, tagLastPoint,
 } from '../db.js';
 
 let currentMatchId = null;
+
+function currentSetNumber(sets) {
+  for (let n = 1; n <= 99; n++) {
+    const set = sets.find((s) => s.set_number === n);
+    if (!set || !set.winner_team_id) return n;
+  }
+  return 1;
+}
 
 async function renderHeader(match) {
   const referees = await listRefereeAssignments(match.id);
@@ -31,6 +40,58 @@ async function renderHeader(match) {
       }
     };
   }
+  if (match.status === 'live') {
+    await renderScoringBody(match);
+  }
+}
+
+async function renderScoringBody(match) {
+  const sets = await listSets(match.id);
+  const setNumber = currentSetNumber(sets);
+  const current = sets.find((s) => s.set_number === setNumber) || { points_a: 0, points_b: 0, timeouts_a: 0, timeouts_b: 0 };
+
+  const body = document.getElementById('gameReportBody');
+  body.innerHTML = `
+    <h4>Satz ${setNumber}</h4>
+    <div class="gr-score">
+      <div>
+        <span>${escapeHtml(match.team_a.name)}: <span id="gr_score_a">${current.points_a}</span></span>
+        <button id="pointA">+1 ${escapeHtml(match.team_a.name)}</button>
+        <button id="timeoutA">Timeout</button>
+        <span>Timeouts: <span id="gr_timeouts_a">${current.timeouts_a}</span></span>
+      </div>
+      <div>
+        <span>${escapeHtml(match.team_b.name)}: <span id="gr_score_b">${current.points_b}</span></span>
+        <button id="pointB">+1 ${escapeHtml(match.team_b.name)}</button>
+        <button id="timeoutB">Timeout</button>
+        <span>Timeouts: <span id="gr_timeouts_b">${current.timeouts_b}</span></span>
+      </div>
+    </div>
+    <button id="undoBtn">Rückgängig</button>
+    <span id="gr_tag_hint">Letzter Punkt: <button id="tagAceBtn">Ass</button><button id="tagFaultBtn">Aufschlagfehler</button></span>
+    <div id="gr_sets_summary">
+      ${sets.map((s) => `<span>Satz ${s.set_number}: ${s.points_a}:${s.points_b}${s.winner_team_id ? ' ✓' : ''}</span>`).join(' · ')}
+    </div>
+  `;
+
+  const errorEl = document.getElementById('gameReportError');
+  const withErrorHandling = (fn) => async () => {
+    try {
+      await fn();
+      await selectMatch(match.id);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  };
+
+  document.getElementById('pointA').onclick = withErrorHandling(() => recordPoint(match.id, setNumber, 'a'));
+  document.getElementById('pointB').onclick = withErrorHandling(() => recordPoint(match.id, setNumber, 'b'));
+  document.getElementById('timeoutA').onclick = withErrorHandling(() => recordTimeout(match.id, setNumber, 'a'));
+  document.getElementById('timeoutB').onclick = withErrorHandling(() => recordTimeout(match.id, setNumber, 'b'));
+  document.getElementById('undoBtn').onclick = withErrorHandling(() => undoLastPoint(match.id, setNumber));
+  document.getElementById('tagAceBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'ace'));
+  document.getElementById('tagFaultBtn').onclick = withErrorHandling(() => tagLastPoint(match.id, setNumber, 'service_fault'));
 }
 
 async function selectMatch(matchId) {

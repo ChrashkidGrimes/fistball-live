@@ -66,3 +66,23 @@ test('admin can select a match in Game Report and start it', async ({ page }) =>
   await page.click('#startMatchBtn');
   await expect(page.locator('#gameReportHeader')).toContainText('live');
 });
+
+test('scorer can record points, tag a detail, use undo, and record a timeout', async ({ page }) => {
+  await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.click('button[data-screen=game-report]');
+  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#gr_category', { label: 'Game Report Category' });
+  await expect(page.locator('#gameReportHeader')).toContainText('live');
+
+  await page.click('#pointA');
+  await page.click('#pointA');
+  await expect(page.locator('#gr_score_a')).toHaveText('2');
+
+  await page.click('#tagAceBtn');
+
+  await page.click('#undoBtn');
+  await expect(page.locator('#gr_score_a')).toHaveText('1');
+
+  await page.click('#timeoutA');
+  await expect(page.locator('#gr_timeouts_a')).toHaveText('1');
+});

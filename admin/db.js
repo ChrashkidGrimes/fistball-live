@@ -132,3 +132,29 @@ export async function listRefereeAssignments(matchId) {
   if (error) throw error;
   return data;
 }
+
+export async function listSets(matchId) {
+  const { data, error } = await getClient().from('sets').select().eq('match_id', matchId).order('set_number');
+  if (error) throw error;
+  return data;
+}
+
+export async function recordPoint(matchId, setNumber, team) {
+  const { error } = await getClient().rpc('record_point', { p_match_id: matchId, p_set_number: setNumber, p_team: team });
+  if (error) throw error;
+}
+
+export async function undoLastPoint(matchId, setNumber) {
+  const { error } = await getClient().rpc('undo_last_point', { p_match_id: matchId, p_set_number: setNumber });
+  if (error) throw error;
+}
+
+export async function recordTimeout(matchId, setNumber, team) {
+  const { error } = await getClient().rpc('record_timeout', { p_match_id: matchId, p_set_number: setNumber, p_team: team });
+  if (error) throw error;
+}
+
+export async function tagLastPoint(matchId, setNumber, detail) {
+  const { error } = await getClient().rpc('tag_last_point', { p_match_id: matchId, p_set_number: setNumber, p_detail: detail });
+  if (error) throw error;
+}
