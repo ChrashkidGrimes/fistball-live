@@ -1868,8 +1868,14 @@ test('scorer can record an extraordinary event, and the decided-match banner app
   await page.click('#incidentForm button[type=submit]');
   await expect(page.locator('#gr_incidents_list')).toContainText('Regenunterbrechung');
 
-  // Drive the current set to a decided 11-0 to make the banner appear.
-  for (let i = 0; i < 11; i++) {
+  // The fixture match was created via the Matches screen (Task 7's test)
+  // with the form's default best_of=5, so winning the match requires 3 won
+  // sets (ceil(5/2)), not 1 — drive 3 sets to 11-0 each (33 total clicks)
+  // to make the banner appear. Each `#pointA` click is followed by a full
+  // re-render (selectMatch), which re-resolves `currentSetNumber` and
+  // rebinds the button, so this loop naturally rolls from set 1 into set 2
+  // and set 3 without any special handling.
+  for (let i = 0; i < 33; i++) {
     await page.click('#pointA');
   }
   await expect(page.locator('#gr_decided_banner')).toBeVisible();
