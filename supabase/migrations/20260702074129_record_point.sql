@@ -45,7 +45,7 @@ begin
 
   v_match := public.get_live_match(p_match_id);
 
-  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
+  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number for update;
   if v_set.id is null then
     insert into sets (match_id, set_number) values (p_match_id, p_set_number) returning * into v_set;
   end if;
@@ -91,7 +91,7 @@ declare
 begin
   v_match := public.get_live_match(p_match_id);
 
-  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
+  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number for update;
   if v_set.id is null then
     raise exception 'set not found';
   end if;
