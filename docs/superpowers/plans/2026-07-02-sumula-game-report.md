@@ -14,6 +14,7 @@
 - Every DB-sourced string interpolated into `innerHTML` MUST go through `escapeHtml()` from `admin/db.js` (established in Teilprojekt 1 after a stored-XSS finding).
 - `admin/db.js` and any shared test files are appended to across tasks, never rewritten — earlier tasks' functions/tests must remain byte-for-byte intact.
 - Win condition for a set: `(points >= 11 AND lead >= 2) OR (points >= 15)` — covers the regular 11-point rule and the 15:14 sudden-death hard cap in one formula.
+- Every RPC that reads a `sets` row before writing to it (`record_point`, `tag_last_point`, `undo_last_point`, `record_timeout`) must `select ... for update` that row (row-level lock), so concurrent calls for the same set serialize instead of racing and silently dropping a point.
 - Admin is the only role that sets `matches.status = 'finished'` — unchanged from Teilprojekt 1. This plan does NOT add any automatic transition to `finished`.
 - `players.team_id → teams(id) on delete cascade`; `player_events.player_id`, `substitutions.player_out_id`/`player_in_id` → `players(id) on delete restrict` (prevents silent loss of card/substitution history).
 - Local dev DB accumulates fixtures across test runs (documented Teilprojekt-1 characteristic) — run `npx supabase db reset && node scripts/seed-roles.mjs` before a clean full-suite run if you hit unexplained duplicate-key errors.
@@ -493,7 +494,7 @@ begin
 
   v_match := public.get_live_match(p_match_id);
 
-  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
+  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number for update;
   if v_set.id is null then
     insert into sets (match_id, set_number) values (p_match_id, p_set_number) returning * into v_set;
   end if;
@@ -539,7 +540,7 @@ declare
 begin
   v_match := public.get_live_match(p_match_id);
 
-  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
+  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number for update;
   if v_set.id is null then
     raise exception 'set not found';
   end if;
@@ -718,7 +719,7 @@ declare
 begin
   v_match := public.get_live_match(p_match_id);
 
-  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
+  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number for update;
   if v_set.id is null then
     raise exception 'set not found';
   end if;
@@ -831,7 +832,7 @@ begin
 
   v_match := public.get_live_match(p_match_id);
 
-  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number;
+  select * into v_set from sets where match_id = p_match_id and set_number = p_set_number for update;
   if v_set.id is null then
     insert into sets (match_id, set_number) values (p_match_id, p_set_number) returning * into v_set;
   end if;
