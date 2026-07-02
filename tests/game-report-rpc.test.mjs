@@ -102,3 +102,33 @@ test('tag_last_point sets the event_type of the most recent point', async () => 
     .eq('set_id', set.id).order('created_at', { ascending: false }).limit(1);
   assert.equal(events[0].event_type, 'ace');
 });
+
+test('undo_last_point reverses the last point and clears winner_team_id', async () => {
+  await service.from('sets').insert({ match_id: matchId, set_number: 6, points_a: 10, points_b: 9 });
+  await scorer.rpc('record_point', { p_match_id: matchId, p_set_number: 6, p_team: 'a' });
+  let { data } = await service.from('sets').select().eq('match_id', matchId).eq('set_number', 6).single();
+  assert.equal(data.points_a, 11);
+  assert.equal(data.winner_team_id, teamAId);
+
+  const { error } = await scorer.rpc('undo_last_point', { p_match_id: matchId, p_set_number: 6 });
+  assert.equal(error, null);
+  ({ data } = await service.from('sets').select().eq('match_id', matchId).eq('set_number', 6).single());
+  assert.equal(data.points_a, 10);
+  assert.equal(data.winner_team_id, null);
+});
+
+test('undo_last_point can be called repeatedly', async () => {
+  await service.from('sets').insert({ match_id: matchId, set_number: 7, points_a: 0, points_b: 0 });
+  await scorer.rpc('record_point', { p_match_id: matchId, p_set_number: 7, p_team: 'a' });
+  await scorer.rpc('record_point', { p_match_id: matchId, p_set_number: 7, p_team: 'a' });
+  await scorer.rpc('undo_last_point', { p_match_id: matchId, p_set_number: 7 });
+  await scorer.rpc('undo_last_point', { p_match_id: matchId, p_set_number: 7 });
+  const { data } = await service.from('sets').select().eq('match_id', matchId).eq('set_number', 7).single();
+  assert.equal(data.points_a, 0);
+});
+
+test('undo_last_point errors when there is nothing to undo', async () => {
+  await service.from('sets').insert({ match_id: matchId, set_number: 8, points_a: 0, points_b: 0 });
+  const { error } = await scorer.rpc('undo_last_point', { p_match_id: matchId, p_set_number: 8 });
+  assert.ok(error, 'expected an error, nothing recorded yet for this set');
+});
