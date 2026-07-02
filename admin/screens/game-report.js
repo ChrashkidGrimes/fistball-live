@@ -102,13 +102,17 @@ async function renderScoringBody(match, myGeneration) {
   `;
 
   const errorEl = document.getElementById('gameReportError');
-  const withErrorHandling = (fn) => async () => {
+  const withErrorHandling = (fn) => async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
     try {
       await fn();
       await selectMatch(match.id);
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.hidden = false;
+    } finally {
+      btn.disabled = false;
     }
   };
 
