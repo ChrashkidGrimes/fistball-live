@@ -132,3 +132,22 @@ test('undo_last_point errors when there is nothing to undo', async () => {
   const { error } = await scorer.rpc('undo_last_point', { p_match_id: matchId, p_set_number: 8 });
   assert.ok(error, 'expected an error, nothing recorded yet for this set');
 });
+
+test('record_timeout increments the counter for the given team', async () => {
+  await service.from('sets').insert({ match_id: matchId, set_number: 9, points_a: 0, points_b: 0 });
+  await scorer.rpc('record_timeout', { p_match_id: matchId, p_set_number: 9, p_team: 'a' });
+  await scorer.rpc('record_timeout', { p_match_id: matchId, p_set_number: 9, p_team: 'a' });
+  await scorer.rpc('record_timeout', { p_match_id: matchId, p_set_number: 9, p_team: 'b' });
+  const { data } = await service.from('sets').select().eq('match_id', matchId).eq('set_number', 9).single();
+  assert.equal(data.timeouts_a, 2);
+  assert.equal(data.timeouts_b, 1);
+});
+
+test('record_timeout is rejected for a non-live match', async () => {
+  const { data: scheduledMatch } = await service.from('matches').insert({
+    category_id: categoryId, team_a_id: teamAId, team_b_id: teamBId, sheet_match_nr: 999304,
+  }).select().single();
+  const { error } = await scorer.rpc('record_timeout', { p_match_id: scheduledMatch.id, p_set_number: 1, p_team: 'a' });
+  assert.ok(error, 'expected an error, match is not live');
+  await service.from('matches').delete().eq('id', scheduledMatch.id);
+});
