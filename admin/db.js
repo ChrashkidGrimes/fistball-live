@@ -188,3 +188,16 @@ export async function listSubstitutions(matchId) {
   if (error) throw error;
   return data;
 }
+
+export async function createMatchIncident({ match_id, incident_type, team_id, note }) {
+  const { error } = await getClient().from('match_incidents').insert({
+    match_id, incident_type, team_id: team_id || null, note: note || null,
+  });
+  if (error) throw error;
+}
+
+export async function listMatchIncidents(matchId) {
+  const { data, error } = await getClient().from('match_incidents').select().eq('match_id', matchId).order('created_at');
+  if (error) throw error;
+  return data;
+}

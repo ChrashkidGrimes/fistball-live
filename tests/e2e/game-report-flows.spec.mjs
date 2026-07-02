@@ -125,3 +125,25 @@ test('scorer can record a substitution', async ({ page }) => {
   await expect(page.locator('#gr_subs_list')).toContainText('Max Mustermann');
   await expect(page.locator('#gr_subs_list')).toContainText('Erik Ersatz');
 });
+
+test('scorer can record an extraordinary event, and the decided-match banner appears', async ({ page }) => {
+  await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.click('button[data-screen=game-report]');
+  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#gr_category', { label: 'Game Report Category' });
+
+  await page.selectOption('#incident_type', 'other');
+  await page.fill('#incident_note', 'Regenunterbrechung 5 Minuten');
+  await page.click('#incidentForm button[type=submit]');
+  await expect(page.locator('#gr_incidents_list')).toContainText('Regenunterbrechung');
+
+  // Drive the match to a decided state. The fixture match has best_of=5, so
+  // deciding it requires winning ceil(5/2)=3 sets, i.e. 33 points minimum (11
+  // per set). Each #pointA click triggers a full re-render via selectMatch,
+  // which naturally advances currentSetNumber once a set is won — so this
+  // loop rolls from set 1 into set 2 and set 3 without any special handling.
+  for (let i = 0; i < 33; i++) {
+    await page.click('#pointA');
+  }
+  await expect(page.locator('#gr_decided_banner')).toBeVisible();
+});

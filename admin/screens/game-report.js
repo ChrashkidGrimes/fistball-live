@@ -4,6 +4,7 @@ import {
   listSets, recordPoint, undoLastPoint, recordTimeout, tagLastPoint,
   listPlayers, createPlayerEvent, listPlayerEvents,
   createSubstitution, listSubstitutions,
+  createMatchIncident, listMatchIncidents,
 } from '../db.js';
 
 let currentMatchId = null;
@@ -23,6 +24,15 @@ function currentSetNumber(sets) {
     if (!set || !set.winner_team_id) return n;
   }
   return 1;
+}
+
+function setsWonPerTeam(sets, match) {
+  let wonA = 0, wonB = 0;
+  for (const s of sets) {
+    if (s.winner_team_id === match.team_a_id) wonA++;
+    if (s.winner_team_id === match.team_b_id) wonB++;
+  }
+  return { wonA, wonB };
 }
 
 async function renderHeader(match, myGeneration) {
@@ -62,9 +72,13 @@ async function renderScoringBody(match, myGeneration) {
   if (myGeneration !== renderGeneration) return;
   const setNumber = currentSetNumber(sets);
   const current = sets.find((s) => s.set_number === setNumber) || { points_a: 0, points_b: 0, timeouts_a: 0, timeouts_b: 0 };
+  const { wonA, wonB } = setsWonPerTeam(sets, match);
+  const neededSets = Math.ceil(match.best_of / 2);
+  const decided = wonA >= neededSets || wonB >= neededSets;
 
   const body = document.getElementById('gameReportBody');
   body.innerHTML = `
+    ${decided ? `<p id="gr_decided_banner">Match entschieden (${wonA}:${wonB}) — wartet auf Freigabe durch Admin</p>` : ''}
     <h4>Satz ${setNumber}</h4>
     <div class="gr-score">
       <div>
@@ -110,6 +124,8 @@ async function renderScoringBody(match, myGeneration) {
   await renderCardsSection(match, myGeneration);
   if (myGeneration !== renderGeneration) return;
   await renderSubstitutionsSection(match, setNumber, myGeneration);
+  if (myGeneration !== renderGeneration) return;
+  await renderIncidentsSection(match, myGeneration);
 }
 
 async function renderCardsSection(match, myGeneration) {
@@ -201,6 +217,46 @@ async function renderSubstitutionsSection(match, setNumber, myGeneration) {
         team_id: teamId,
         player_out_id: outSelect.value,
         player_in_id: document.getElementById('sub_player_in').value,
+      });
+      await selectMatch(match.id);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  };
+}
+
+async function renderIncidentsSection(match, myGeneration) {
+  const incidents = await listMatchIncidents(match.id);
+  if (myGeneration !== renderGeneration) return;
+  const body = document.getElementById('gameReportBody');
+  body.insertAdjacentHTML('beforeend', `
+    <h4>Sonstiges</h4>
+    <div id="gr_incidents_list">
+      ${incidents.map((i) => `<div>${escapeHtml(i.incident_type)}${i.note ? ': ' + escapeHtml(i.note) : ''}</div>`).join('')}
+    </div>
+    <form id="incidentForm" class="entity-form">
+      <label>Typ
+        <select id="incident_type">
+          <option value="protest">Protest</option>
+          <option value="referee_report">Schiedsrichterbericht</option>
+          <option value="captain_time_violation">Zeitstrafe Kapitän</option>
+          <option value="other">Sonstiges</option>
+        </select>
+      </label>
+      <label>Notiz<input id="incident_note"></label>
+      <button type="submit">Erfassen</button>
+    </form>
+  `);
+
+  document.getElementById('incidentForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('gameReportError');
+    try {
+      await createMatchIncident({
+        match_id: match.id,
+        incident_type: document.getElementById('incident_type').value,
+        note: document.getElementById('incident_note').value.trim(),
       });
       await selectMatch(match.id);
     } catch (err) {
