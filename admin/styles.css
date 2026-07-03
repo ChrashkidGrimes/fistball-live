@@ -5,6 +5,7 @@ body { font-family: system-ui, sans-serif; background: #12151a; color: #e8e8e8; 
 #loginForm input { padding: 0.5rem; border-radius: 4px; border: 1px solid #444; background: #1c2128; color: inherit; }
 #loginForm button { padding: 0.5rem; border-radius: 4px; border: none; background: #3b82f6; color: white; cursor: pointer; }
 .error { color: #f87171; }
+.warning { color: #b45309; }
 header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #2a2f38; }
 #nav { display: flex; gap: 0.5rem; padding: 1rem; border-bottom: 1px solid #2a2f38; }
 #nav button { padding: 0.4rem 0.8rem; border-radius: 4px; border: 1px solid #444; background: #1c2128; color: inherit; cursor: pointer; }

@@ -269,3 +269,22 @@ export async function deleteReferee(id) {
   const { error } = await getClient().from('referees').delete().eq('id', id);
   if (error) throw error;
 }
+
+export async function listAssignmentsForMatch(matchId) {
+  const { data, error } = await getClient()
+    .from('referee_assignments')
+    .select('id, role, referee:referee_id(id, name, country)')
+    .eq('match_id', matchId);
+  if (error) throw error;
+  return data;
+}
+
+export async function createRefereeAssignment({ match_id, referee_id, role }) {
+  const { error } = await getClient().from('referee_assignments').insert({ match_id, referee_id, role });
+  if (error) throw error;
+}
+
+export async function deleteRefereeAssignment(id) {
+  const { error } = await getClient().from('referee_assignments').delete().eq('id', id);
+  if (error) throw error;
+}
