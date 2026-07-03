@@ -156,7 +156,7 @@ export async function getMatch(matchId) {
 export async function listRefereeAssignments(matchId) {
   const { data, error } = await getClient()
     .from('referee_assignments')
-    .select('referee_name, role')
+    .select('role, referee:referee_id(name)')
     .eq('match_id', matchId);
   if (error) throw error;
   return data;

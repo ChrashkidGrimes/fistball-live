@@ -39,7 +39,7 @@ async function renderHeader(match, myGeneration) {
   const referees = await listRefereeAssignments(match.id);
   if (myGeneration !== renderGeneration) return;
   const refereeList = referees.length
-    ? referees.map((r) => `${escapeHtml(r.role)}: ${escapeHtml(r.referee_name)}`).join(', ')
+    ? referees.map((r) => `${escapeHtml(r.role)}: ${escapeHtml(r.referee.name)}`).join(', ')
     : '—';
   const headerWrap = document.getElementById('gameReportHeader');
   headerWrap.innerHTML = `
