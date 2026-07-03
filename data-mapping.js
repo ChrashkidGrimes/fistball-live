@@ -62,14 +62,18 @@ export function mapMatch(row) {
 export function mapCautions(rows) {
   const players = new Map();
   for (const r of rows) {
+    // Nested joins (player/team/category) can be null on malformed or
+    // partial rows — guard with optional chaining so one bad row can't
+    // throw and take down the whole viewer. Skip rows with no player at all.
+    if (!r.player_id || !r.player) continue;
     if (!players.has(r.player_id)) {
       players.set(r.player_id, {
-        team: r.player.team.name,
-        teamName: r.player.team.name,
-        category: r.player.team.category.name,
+        team: r.player.team?.name || '',
+        teamName: r.player.team?.name || '',
+        category: r.player.team?.category?.name || '',
         nr: r.player.jersey_number ?? '',
-        name: r.player.family_name,
-        first: r.player.given_name,
+        name: r.player.family_name || '',
+        first: r.player.given_name || '',
         y: 0, yr: 0, r: 0, events: [],
       });
     }

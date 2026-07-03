@@ -138,6 +138,36 @@ test('mapCautions aggregates multiple events for the same player and keeps playe
   assert.equal(p2.events[0].game, '');
 });
 
+test('mapCautions tolerates malformed/partial nested joins instead of throwing', () => {
+  const rows = [
+    // Missing player entirely (e.g. deleted player / bad join) — should be skipped.
+    { event_type: 'Y', player_id: 'p-missing', player: null, match: { round_label: 'Group Match 1' } },
+    // player present but team/category nested joins are null.
+    {
+      event_type: 'R', player_id: 'p3',
+      player: { family_name: 'Keller', given_name: 'Kim', jersey_number: 9, team: null },
+      match: { round_label: 'Group Match 2' },
+    },
+    // player.team present but category missing.
+    {
+      event_type: 'YR', player_id: 'p4',
+      player: { family_name: 'Fischer', given_name: 'Finn', jersey_number: null, team: { name: 'Germany', category: null } },
+      match: null,
+    },
+  ];
+  const result = mapCautions(rows);
+  assert.equal(result.length, 2);
+  const p3 = result.find((p) => p.name === 'Keller');
+  assert.equal(p3.teamName, '');
+  assert.equal(p3.category, '');
+  assert.equal(p3.r, 1);
+  const p4 = result.find((p) => p.name === 'Fischer');
+  assert.equal(p4.teamName, 'Germany');
+  assert.equal(p4.category, '');
+  assert.equal(p4.nr, '');
+  assert.equal(p4.events[0].game, '');
+});
+
 test('rulesFromConfig returns full defaults for null or empty config', () => {
   assert.deepEqual(rulesFromConfig(null), DEFAULT_RULES);
   assert.deepEqual(rulesFromConfig({}), DEFAULT_RULES);

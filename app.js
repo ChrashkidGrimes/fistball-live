@@ -1,12 +1,12 @@
 /* ============================================================
    Fistball Live — 2026 U18 WC & Women's EFA Championship
-   Reads results live from the public Google Sheet (gviz CSV)
-   and computes standings client-side.
+   Reads results live from Supabase and computes standings
+   client-side.
    ============================================================ */
 
 import { fetchTournament, fetchMatches, fetchCautions } from './supabase-client.js';
 import {
-  DEFAULT_TIEBREAKERS, DEFAULT_RULES, sourceLabel, isRealTeam as isRealTeamName,
+  DEFAULT_TIEBREAKERS, DEFAULT_RULES, isRealTeam as isRealTeamName,
   mapMatch, mapCautions, rulesFromConfig,
 } from './data-mapping.js';
 
@@ -635,8 +635,6 @@ function renderCards() {
   }
   host.innerHTML = html;
 }
-
-/* ---------------------- Rules from the Config tab ---------------------- */
 
 /* ---------------------- Data loading ---------------------- */
 
