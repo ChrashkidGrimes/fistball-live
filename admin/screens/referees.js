@@ -144,8 +144,14 @@ async function render(main, { role }) {
       </table>`;
     document.querySelectorAll('[data-delete-assignment]').forEach((btn) => {
       btn.onclick = async () => {
-        await deleteRefereeAssignment(btn.dataset.deleteAssignment);
-        await renderAssignments();
+        const errorEl = document.getElementById('assignError');
+        try {
+          await deleteRefereeAssignment(btn.dataset.deleteAssignment);
+          await renderAssignments();
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.hidden = false;
+        }
       };
     });
   }
