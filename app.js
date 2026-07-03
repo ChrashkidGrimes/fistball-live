@@ -4,32 +4,19 @@
    and computes standings client-side.
    ============================================================ */
 
+import { fetchTournament, fetchMatches, fetchCautions } from './supabase-client.js';
+import {
+  DEFAULT_TIEBREAKERS, DEFAULT_RULES, sourceLabel, isRealTeam as isRealTeamName,
+  mapMatch, mapCautions, rulesFromConfig,
+} from './data-mapping.js';
+
 const CONFIG = {
-  // The published/shared Google Sheet that holds the results.
-  sheetId: "1IWuv2zOZtIJDZCFnItp_z8p546azRGlD8I052jVe8Mk",
-  gid: "0",                 // tab that holds the schedule + scores
   refreshMs: 60000,         // auto-refresh interval
 };
 
-// gviz CSV endpoint — works for any sheet shared as "anyone with the link can view".
-const DATA_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&gid=${CONFIG.gid}&_=`;
-// The Config tab is read by NAME, so the same app works for any event's sheet.
-const CONFIG_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Config&_=`;
-// Disciplinary records (yellow / yellow-red / red cards) per player.
-const CAUTIONS_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Cautions&_=`;
-
 // Rounds that form a round-robin group stage (used to compute standings).
 const GROUP_ROUNDS = ["Qualification round", "WEC - Vorrunde"];
-const STATUS_VALUES = ["Not Started", "Starting", "In progress", "Finished"];
 
-// Scoring & tie-break rules — defaults follow the official IFA rule (art. 11):
-// win 2 / draw 1 / loss 0, then head-to-head set diff/quotient/point diff,
-// then the same across all group matches. Overridden by the sheet's Config tab.
-const DEFAULT_TIEBREAKERS = [
-  "H2H_SET_DIFF", "H2H_SET_RATIO", "H2H_POINT_DIFF",
-  "SET_DIFF", "SET_RATIO", "POINT_DIFF",
-];
-const DEFAULT_RULES = { pointTable: [], drawPoints: 1, tiebreakers: DEFAULT_TIEBREAKERS.slice() };
 const rules = () => state.rules || DEFAULT_RULES;
 
 // Category chips are grouped into two rows (Women, then Men) and ordered
@@ -70,114 +57,14 @@ const state = {
   lastUpdated: null,
 };
 
-/* ---------------------- CSV parsing ---------------------- */
-
-function parseCSV(text) {
-  const rows = [];
-  let row = [], field = "", inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; }
-        else inQuotes = false;
-      } else field += c;
-    } else {
-      if (c === '"') inQuotes = true;
-      else if (c === ",") { row.push(field); field = ""; }
-      else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-      else if (c === "\r") { /* ignore */ }
-      else field += c;
-    }
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows;
-}
-
 /* ---------------------- Match model ---------------------- */
 
-const num = (v) => {
-  const n = parseInt(String(v).trim(), 10);
-  return Number.isFinite(n) ? n : 0;
-};
-
-// Strip the trailing " - <Category>" suffix from a team name.
-function cleanTeam(name, category) {
-  if (!name) return name;
-  let n = name.trim();
-  if (category && n.endsWith(" - " + category)) {
-    n = n.slice(0, -(" - " + category).length);
-  } else {
-    // fall back: drop suffix after last " - " if it looks like a category tag
-    const m = n.match(/^(.*?) - (U18 .*|WEC)$/);
-    if (m) n = m[1];
-  }
-  return n.trim();
-}
-
-// A team is a real entrant (not a bracket placeholder).
-// Placeholders are the *cleaned* names like "Gold 3rd", "Winner SF1", "WEC R4",
-// "5th Silver", "Loser L1" — all of which contain a digit or "winner"/"loser".
-// Real country names never do.
 function isRealTeam(name) {
-  if (!name) return false;
-  return !/\d/.test(name) && !/(winner|loser)/i.test(name);
+  return isRealTeamName(name);
 }
 
 function flagFor(team) {
   return FLAGS[team] || "";
-}
-
-// Build a match object from one CSV data row.
-function rowToMatch(r) {
-  const nr = num(r[2]);
-  const teamA = (r[4] || "").trim();
-  const teamB = (r[5] || "").trim();
-  const category = (r[7] || "").trim();
-  if (!nr || !teamA || !teamB || !category) return null;
-
-  const setsA = num(r[9]);
-  const setsB = num(r[11]);
-
-  // Status: find a cell matching a known status value.
-  let status = "Not Started";
-  for (const cell of r) {
-    const t = (cell || "").trim();
-    if (STATUS_VALUES.includes(t)) { status = t; break; }
-  }
-
-  // Total points: located around the "|" separator token.
-  let pointsA = 0, pointsB = 0;
-  const pipeIdx = r.findIndex((c) => (c || "").trim() === "|");
-  if (pipeIdx > 0) { pointsA = num(r[pipeIdx - 1]); pointsB = num(r[pipeIdx + 1]); }
-
-  // Per-set scores: triplets (a, "x", b) sitting between Total Sets (col 11) and the "|".
-  const sets = [];
-  const setEnd = pipeIdx > 13 ? pipeIdx : r.length;
-  for (let i = 12; i + 2 < setEnd; i += 3) {
-    if ((r[i + 1] || "").trim() !== "x") break;
-    const a = num(r[i]), b = num(r[i + 2]);
-    if (a === 0 && b === 0) continue;
-    sets.push([a, b]);
-  }
-
-  return {
-    day: (r[0] || "").trim(),
-    time: (r[1] || "").trim(),
-    nr,
-    court: (r[3] || "").trim(),
-    teamARaw: teamA,
-    teamBRaw: teamB,
-    teamA: cleanTeam(teamA, category),
-    teamB: cleanTeam(teamB, category),
-    round: (r[6] || "").trim(),
-    category,
-    bestOf: num(r[8]),
-    setsA, setsB,
-    pointsA, pointsB,
-    sets,
-    status,
-  };
 }
 
 function statusClass(s) {
@@ -701,48 +588,6 @@ function renderBracket() {
 
 /* ---------------------- Cards (cautions) ---------------------- */
 
-// Parse the Cautions tab. Primary source = the raw event list (one row per
-// caution, with the game and type); falls back to the aggregated summary.
-function parseCautions(csvText) {
-  let rows;
-  try { rows = parseCSV(csvText); } catch (_) { return []; }
-  const players = new Map();
-  const ensure = (team, nr, name, first) => {
-    const key = `${team}|${nr}|${name}|${first}`;
-    if (!players.has(key)) {
-      const i = team.indexOf(" - ");
-      players.set(key, {
-        team, teamName: i >= 0 ? team.slice(0, i) : team,
-        category: i >= 0 ? team.slice(i + 3) : "",
-        nr, name, first, y: 0, yr: 0, r: 0, events: [],
-      });
-    }
-    return players.get(key);
-  };
-  const TYPES = ["Y", "YR", "R"];
-  // Raw events: cols K–P → Team(10), Nr(11), Name(12), First(13), Game(14), Caution(15)
-  for (const r of rows) {
-    const team = (r[10] || "").trim();
-    const c = (r[15] || "").trim().toUpperCase();
-    if (!team || !TYPES.includes(c)) continue;
-    const p = ensure(team, (r[11] || "").trim(), (r[12] || "").trim(), (r[13] || "").trim());
-    p[c.toLowerCase()]++;
-    p.events.push({ game: (r[14] || "").trim(), type: c });
-  }
-  // Fallback: aggregated summary cols A–I (Team1, Nr2, Name3, First4, Y5, YR6, R7)
-  if (players.size === 0) {
-    for (const r of rows) {
-      const team = (r[1] || "").trim();
-      if (!team || team === "#N/A") continue;
-      const y = num(r[5]), yr = num(r[6]), rr = num(r[7]);
-      if (y + yr + rr === 0) continue;
-      const p = ensure(team, (r[2] || "").trim(), (r[3] || "").trim(), (r[4] || "").trim());
-      p.y = y; p.yr = yr; p.r = rr;
-    }
-  }
-  return [...players.values()];
-}
-
 function cautionBadge(kind, n) {
   if (!n) return "";
   const label = { y: "Y", yr: "YR", r: "R" }[kind];
@@ -793,129 +638,53 @@ function renderCards() {
 
 /* ---------------------- Rules from the Config tab ---------------------- */
 
-const TIEBREAK_ALIASES = {
-  H2H_SET_DIFF: "H2H_SET_DIFF", H2H_SET_DIFFERENCE: "H2H_SET_DIFF",
-  H2H_SET_RATIO: "H2H_SET_RATIO", H2H_SET_QUOTIENT: "H2H_SET_RATIO",
-  H2H_POINT_DIFF: "H2H_POINT_DIFF", H2H_POINT_DIFFERENCE: "H2H_POINT_DIFF",
-  H2H_POINT_RATIO: "H2H_POINT_RATIO", H2H_POINT_QUOTIENT: "H2H_POINT_RATIO",
-  SET_DIFF: "SET_DIFF", SET_DIFFERENCE: "SET_DIFF",
-  SET_RATIO: "SET_RATIO", SET_QUOTIENT: "SET_RATIO",
-  POINT_DIFF: "POINT_DIFF", POINT_DIFFERENCE: "POINT_DIFF",
-  POINT_RATIO: "POINT_RATIO", POINT_QUOTIENT: "POINT_RATIO",
-  WINS: "WINS",
-};
-const tbKey = (raw) => TIEBREAK_ALIASES[String(raw).trim().toUpperCase().replace(/[\s.\-]+/g, "_")] || null;
-
-// Parse the Config tab by scanning for labels (robust to layout changes).
-function parseRules(csvText) {
-  const out = { pointTable: [], drawPoints: 1, tiebreakers: DEFAULT_TIEBREAKERS.slice() };
-  let rows;
-  try { rows = parseCSV(csvText); } catch (_) { return out; }
-  const up = (s) => String(s || "").trim().toUpperCase().replace(/[\s.]+/g, "_");
-
-  // Point Table — find the BEST_OF header, read columns by name, rows until non-numeric.
-  for (let r = 0; r < rows.length; r++) {
-    const hdr = rows[r];
-    if (hdr.findIndex((c) => up(c) === "BEST_OF") === -1) continue;
-    const col = (...names) => hdr.findIndex((c) => names.includes(up(c)));
-    const cB = col("BEST_OF");
-    const cSV = col("SETS_VENCEDOR", "WINNER_SETS", "SETS_VENC");
-    const cSP = col("SETS_PERDEDOR", "LOSER_SETS", "SETS_PERD");
-    const cPV = col("PTS_VENCEDOR", "WINNER_PTS", "PTS_VENC", "POINTS_WINNER");
-    const cPP = col("PTS_PERDEDOR", "LOSER_PTS", "PTS_PERD", "POINTS_LOSER");
-    if (cSV < 0 || cSP < 0 || cPV < 0 || cPP < 0) break;
-    for (let k = r + 1; k < rows.length; k++) {
-      const bo = parseInt(String(rows[k][cB]).trim(), 10);
-      if (!Number.isFinite(bo)) break;
-      out.pointTable.push({
-        bestOf: bo, winSets: num(rows[k][cSV]), loseSets: num(rows[k][cSP]),
-        winPts: num(rows[k][cPV]), losePts: num(rows[k][cPP]),
-      });
-    }
-    break;
-  }
-
-  // DRAW_POINTS — labelled cell, value to its right.
-  for (let r = 0; r < rows.length && out.drawPoints === 1; r++) {
-    for (let c = 0; c < rows[r].length; c++) {
-      if (["DRAW_POINTS", "DRAW", "EMPATE", "PONTOS_EMPATE"].includes(up(rows[r][c]))) {
-        for (let c2 = c + 1; c2 < rows[r].length; c2++) {
-          const v = String(rows[r][c2]).trim();
-          if (v !== "") { const n = parseFloat(v); if (Number.isFinite(n)) out.drawPoints = n; break; }
-        }
-      }
-    }
-  }
-
-  // TIEBREAKERS — labelled cell, ordered list read downward in the same column.
-  for (let r = 0; r < rows.length; r++) {
-    const c = rows[r].findIndex((x) => ["TIEBREAKERS", "TIEBREAKER", "DESEMPATE", "DESEMPATES"].includes(up(x)));
-    if (c === -1) continue;
-    const list = [];
-    for (let k = r + 1; k < rows.length; k++) {
-      const raw = String(rows[k][c]).trim();
-      if (raw === "") break;
-      const key = tbKey(raw);
-      if (key) list.push(key);
-    }
-    if (list.length) out.tiebreakers = list;
-    break;
-  }
-  return out;
-}
-
 /* ---------------------- Data loading ---------------------- */
 
 async function load(showSpin) {
   const btn = $("refreshBtn");
   if (showSpin) btn.classList.add("spin");
   try {
-    const [resR, cfgR, cauR] = await Promise.allSettled([
-      fetch(DATA_URL + Date.now(), { cache: "no-store" }),
-      fetch(CONFIG_URL + Date.now(), { cache: "no-store" }),
-      fetch(CAUTIONS_URL + Date.now(), { cache: "no-store" }),
-    ]);
-    // Config is optional — fall back to defaults / cache if it fails.
-    if (cfgR.status === "fulfilled" && cfgR.value.ok) {
-      const cfgText = await cfgR.value.text();
-      state.rules = parseRules(cfgText);
-      try { localStorage.setItem("fb_rules", cfgText); } catch (_) {}
-    } else if (!state.rules) {
-      const cachedCfg = localStorage.getItem("fb_rules");
-      state.rules = cachedCfg ? parseRules(cachedCfg) : DEFAULT_RULES;
-    }
-    // Cautions are optional too.
-    if (cauR.status === "fulfilled" && cauR.value.ok) {
-      const cauText = await cauR.value.text();
-      state.cautions = parseCautions(cauText);
-      try { localStorage.setItem("fb_cautions", cauText); } catch (_) {}
+    const tournament = await fetchTournament();
+    const rawMatches = await fetchMatches(tournament.id);
+    const matches = rawMatches.map(mapMatch);
+    const matchIds = rawMatches.map((m) => m.id);
+
+    state.rules = rulesFromConfig(tournament.config);
+    try { localStorage.setItem("fb_rules", JSON.stringify(state.rules)); } catch (_) {}
+
+    // Cautions are optional — a failure here must not block the main
+    // standings/matches display.
+    const [cauR] = await Promise.allSettled([fetchCautions(matchIds)]);
+    if (cauR.status === "fulfilled") {
+      state.cautions = mapCautions(cauR.value);
+      try { localStorage.setItem("fb_cautions", JSON.stringify(state.cautions)); } catch (_) {}
     } else if (!state.cautions.length) {
       const cachedCau = localStorage.getItem("fb_cautions");
-      if (cachedCau) state.cautions = parseCautions(cachedCau);
+      if (cachedCau) state.cautions = JSON.parse(cachedCau);
     }
-    if (resR.status !== "fulfilled" || !resR.value.ok) throw new Error("results fetch failed");
-    const text = await resR.value.text();
-    applyData(text);
-    cacheData(text);
+
+    applyData(matches);
+    cacheData(matches);
     $("banner").hidden = true;
   } catch (err) {
     console.warn("Live fetch failed:", err);
-    if (!state.rules) state.rules = DEFAULT_RULES;
+    if (!state.rules) {
+      const cachedRules = localStorage.getItem("fb_rules");
+      state.rules = cachedRules ? JSON.parse(cachedRules) : DEFAULT_RULES;
+    }
     const cached = localStorage.getItem("fb_cache");
-    if (cached && !state.matches.length) applyData(cached);
-    showBanner("Couldn't reach the live sheet — showing the last data loaded. Pull to refresh when back online.");
+    if (cached && !state.matches.length) applyData(JSON.parse(cached));
+    showBanner("Couldn't reach the live data — showing the last data loaded. Pull to refresh when back online.");
   } finally {
     btn.classList.remove("spin");
   }
 }
 
-function applyData(csvText) {
-  const rows = parseCSV(csvText);
-  const matches = rows.map(rowToMatch).filter(Boolean);
+function applyData(matches) {
   if (!matches.length) return;
   state.matches = matches;
 
-  // Distinct categories in sheet order.
+  // Distinct categories in fetch order (already sorted by scheduled_time).
   const seen = new Set();
   const cats = [];
   for (const m of matches) if (!seen.has(m.category)) { seen.add(m.category); cats.push(m.category); }
@@ -936,8 +705,8 @@ function applyData(csvText) {
   renderActiveView();
 }
 
-function cacheData(text) {
-  try { localStorage.setItem("fb_cache", text); } catch (_) {}
+function cacheData(matches) {
+  try { localStorage.setItem("fb_cache", JSON.stringify(matches)); } catch (_) {}
 }
 
 function showBanner(msg) {
@@ -1022,7 +791,7 @@ setView(state.activeView);
 
 // initial cache paint for instant load, then network
 const boot = localStorage.getItem("fb_cache");
-if (boot) try { applyData(boot); } catch (_) {}
+if (boot) try { applyData(JSON.parse(boot)); } catch (_) {}
 load(true);
 setInterval(() => { if (!document.hidden) load(false); }, CONFIG.refreshMs);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(false); });
