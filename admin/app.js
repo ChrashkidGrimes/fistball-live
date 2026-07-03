@@ -28,6 +28,7 @@ function renderNav() {
     ['players', 'Kader'],
     ['matches', 'Matches'],
     ['schedule', 'Spielplan'],
+    ['referees', 'Schiedsrichter'],
     ['game-report', 'Game Report'],
   ];
   nav.innerHTML = items.map(([key, label]) =>

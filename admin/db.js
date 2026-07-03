@@ -249,3 +249,23 @@ export async function deleteMatchesByCategory(categoryId) {
   const { error } = await getClient().from('matches').delete().eq('category_id', categoryId);
   if (error) throw error;
 }
+
+export async function listReferees(tournamentId) {
+  const { data, error } = await getClient().from('referees').select().eq('tournament_id', tournamentId).order('name');
+  if (error) throw error;
+  return data;
+}
+
+export async function createReferee({ tournament_id, name, country, available_from, available_to }) {
+  const { error } = await getClient().from('referees').insert({
+    tournament_id, name, country,
+    available_from: available_from || null,
+    available_to: available_to || null,
+  });
+  if (error) throw error;
+}
+
+export async function deleteReferee(id) {
+  const { error } = await getClient().from('referees').delete().eq('id', id);
+  if (error) throw error;
+}
