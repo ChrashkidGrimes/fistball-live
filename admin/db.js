@@ -204,3 +204,22 @@ export async function listMatchIncidents(matchId) {
   if (error) throw error;
   return data;
 }
+
+export async function listMatchesForTournament(tournamentId) {
+  const { data, error } = await getClient()
+    .from('matches')
+    .select('id, category_id, team_a_id, team_b_id, court_id, scheduled_time, categories!inner(tournament_id)')
+    .eq('categories.tournament_id', tournamentId);
+  if (error) throw error;
+  return data;
+}
+
+export async function createMatches(rows) {
+  const { error } = await getClient().from('matches').insert(rows);
+  if (error) throw error;
+}
+
+export async function deleteMatchesByCategory(categoryId) {
+  const { error } = await getClient().from('matches').delete().eq('category_id', categoryId);
+  if (error) throw error;
+}

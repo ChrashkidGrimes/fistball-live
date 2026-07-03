@@ -89,3 +89,49 @@ test('anonymous (logged out) request can still read tournaments from Supabase', 
   expect(result.error).toBeNull();
   expect(result.count).toBeGreaterThanOrEqual(0);
 });
+
+test('admin can generate a round-robin group stage with courts and times', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  await page.click('button[data-screen=tournaments]');
+  await page.fill('#t_name', 'Schedule Gen Tournament');
+  await page.fill('#t_start', '2026-07-23');
+  await page.fill('#t_end', '2026-07-26');
+  await page.click('#tournamentForm button[type=submit]');
+  await expect(page.locator('table tbody')).toContainText('Schedule Gen Tournament');
+
+  await page.click('button[data-screen=categories]');
+  await page.selectOption('#c_tournament', { label: 'Schedule Gen Tournament' });
+  await page.fill('#c_name', 'Schedule Gen Category');
+  await page.selectOption('#c_format', 'round_robin');
+  await page.click('#categoryForm button[type=submit]');
+
+  await page.click('button[data-screen=courts]');
+  await page.selectOption('#court_tournament', { label: 'Schedule Gen Tournament' });
+  await page.fill('#court_name', 'Schedule Court 1');
+  await page.click('#courtForm button[type=submit]');
+
+  await page.click('button[data-screen=teams]');
+  await page.selectOption('#team_tournament', { label: 'Schedule Gen Tournament' });
+  await page.selectOption('#team_category', { label: 'Schedule Gen Category' });
+  for (const name of ['SG Team A', 'SG Team B', 'SG Team C']) {
+    await page.fill('#team_name', name);
+    await page.click('#teamForm button[type=submit]');
+    await expect(page.locator('table tbody')).toContainText(name);
+  }
+
+  await page.click('button[data-screen=schedule]');
+  await page.selectOption('#sg_tournament', { label: 'Schedule Gen Tournament' });
+  await page.selectOption('#sg_category', { label: 'Schedule Gen Category' });
+  await page.fill('#sg_start', '2026-07-23T09:00');
+  await page.fill('#sg_end', '2026-07-23T18:00');
+  await page.click('#sg_preview');
+  await expect(page.locator('#sg_preview_wrap table tbody tr')).toHaveCount(3);
+  await page.click('#sg_commit');
+  await expect(page.locator('#sg_preview_wrap')).toContainText('Spielplan angelegt');
+
+  await page.click('button[data-screen=matches]');
+  await page.selectOption('#match_tournament', { label: 'Schedule Gen Tournament' });
+  await page.selectOption('#match_category', { label: 'Schedule Gen Category' });
+  await expect(page.locator('table tbody tr')).toHaveCount(3);
+});

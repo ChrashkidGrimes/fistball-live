@@ -27,6 +27,7 @@ function renderNav() {
     ['teams', 'Teams'],
     ['players', 'Kader'],
     ['matches', 'Matches'],
+    ['schedule', 'Spielplan'],
     ['game-report', 'Game Report'],
   ];
   nav.innerHTML = items.map(([key, label]) =>
