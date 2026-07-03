@@ -62,6 +62,7 @@ async function render(main, { role }) {
   let currentMatchId = null;
   let currentMatches = [];
   let currentReferees = [];
+  let autoPreviewResults = null;
 
   async function renderRefTable() {
     const referees = currentTournamentId ? await listReferees(currentTournamentId) : [];
@@ -100,31 +101,6 @@ async function render(main, { role }) {
     await refreshAutoCategories(tournamentId);
     await renderWorkload();
   }
-
-  document.getElementById('ref_tournament').onchange = (e) => selectTournament(e.target.value);
-  if (tournaments[0]) await selectTournament(tournaments[0].id);
-
-  document.getElementById('refForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const errorEl = document.getElementById('refError');
-    try {
-      await createReferee({
-        tournament_id: currentTournamentId,
-        name: document.getElementById('ref_name').value.trim(),
-        country: document.getElementById('ref_country').value.trim(),
-        available_from: document.getElementById('ref_available_from').value,
-        available_to: document.getElementById('ref_available_to').value,
-      });
-      document.getElementById('ref_name').value = '';
-      document.getElementById('ref_country').value = '';
-      await renderRefTable();
-      await refreshAssignReferees();
-      await renderWorkload();
-    } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.hidden = false;
-    }
-  };
 
   async function refreshAssignCategories(tournamentId) {
     const categories = await listCategories(tournamentId);
@@ -225,14 +201,6 @@ async function render(main, { role }) {
     updateConflictWarning();
   }
 
-  document.getElementById('assign_category').onchange = (e) => selectCategoryForAssignment(e.target.value);
-  document.getElementById('assign_match').onchange = (e) => {
-    currentMatchId = e.target.value;
-    renderAssignments();
-    updateConflictWarning();
-  };
-  document.getElementById('assign_referee').onchange = updateConflictWarning;
-
   function updateConflictWarning() {
     const warningEl = document.getElementById('assignConflictWarning');
     const match = currentMatches.find((m) => m.id === currentMatchId);
@@ -252,15 +220,47 @@ async function render(main, { role }) {
     }
   }
 
+  async function refreshAutoCategories(tournamentId) {
+    const categories = await listCategories(tournamentId);
+    document.getElementById('auto_categories').innerHTML = '<legend>Kategorien</legend>' + categories.map((c) =>
+      `<label><input type="checkbox" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+  }
+
+  document.getElementById('ref_tournament').onchange = (e) => selectTournament(e.target.value);
+
+  document.getElementById('refForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('refError');
+    try {
+      await createReferee({
+        tournament_id: currentTournamentId,
+        name: document.getElementById('ref_name').value.trim(),
+        country: document.getElementById('ref_country').value.trim(),
+        available_from: document.getElementById('ref_available_from').value,
+        available_to: document.getElementById('ref_available_to').value,
+      });
+      document.getElementById('ref_name').value = '';
+      document.getElementById('ref_country').value = '';
+      await renderRefTable();
+      await refreshAssignReferees();
+      await renderWorkload();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  };
+
+  document.getElementById('assign_category').onchange = (e) => selectCategoryForAssignment(e.target.value);
+  document.getElementById('assign_match').onchange = (e) => {
+    currentMatchId = e.target.value;
+    renderAssignments();
+    updateConflictWarning();
+  };
+  document.getElementById('assign_referee').onchange = updateConflictWarning;
+
   document.getElementById('assign_role_select').onchange = (e) => {
     document.getElementById('assign_role_custom_label').hidden = e.target.value !== 'other';
   };
-
-  await refreshAssignReferees();
-  if (currentTournamentId) {
-    const categories = await refreshAssignCategories(currentTournamentId);
-    if (categories[0]) await selectCategoryForAssignment(categories[0].id);
-  }
 
   document.getElementById('assignForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -280,14 +280,6 @@ async function render(main, { role }) {
       errorEl.hidden = false;
     }
   };
-
-  async function refreshAutoCategories(tournamentId) {
-    const categories = await listCategories(tournamentId);
-    document.getElementById('auto_categories').innerHTML = '<legend>Kategorien</legend>' + categories.map((c) =>
-      `<label><input type="checkbox" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
-  }
-
-  let autoPreviewResults = null;
 
   document.getElementById('auto_preview').onclick = async () => {
     const errorEl = document.getElementById('autoError');
@@ -358,6 +350,15 @@ async function render(main, { role }) {
       errorEl.hidden = false;
     }
   };
+
+  // Initial data load — runs only after every handler above is attached,
+  // so the forms are always interactive as soon as they appear in the DOM.
+  if (tournaments[0]) await selectTournament(tournaments[0].id);
+  await refreshAssignReferees();
+  if (currentTournamentId) {
+    const categories = await refreshAssignCategories(currentTournamentId);
+    if (categories[0]) await selectCategoryForAssignment(categories[0].id);
+  }
 }
 
 registerScreen('referees', { render });
