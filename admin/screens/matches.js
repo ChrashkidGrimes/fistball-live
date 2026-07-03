@@ -49,6 +49,30 @@ async function render(main, { role }) {
   let currentTournamentId = null;
   let currentCategoryId = null;
 
+  // Selects that get their <option> lists rewritten (via .innerHTML) by the
+  // tournament/category refresh chain below. Rewriting innerHTML resets the
+  // selected value back to the first option, so if a user picks a value
+  // while an earlier refresh is still in flight, the late-arriving refresh
+  // can silently clobber their choice (e.g. team_a === team_b, or the wrong
+  // source match wired into a bracket slot) with no error shown. Disabling
+  // these selects for the duration of each refresh chain closes that
+  // window: the user simply can't interact with a select until it holds
+  // options for the tournament/category that's actually current, and
+  // Playwright's own actionability checks wait for re-enablement rather
+  // than racing against it.
+  const RACE_GUARDED_SELECT_IDS = [
+    'match_tournament', 'match_category',
+    'match_team_a', 'match_team_a_source',
+    'match_team_b', 'match_team_b_source',
+    'match_court',
+  ];
+  function setRaceGuardedSelectsDisabled(disabled) {
+    for (const id of RACE_GUARDED_SELECT_IDS) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = disabled;
+    }
+  }
+
   function toggleSourceFields() {
     const aMode = document.getElementById('match_team_a_mode').value;
     document.getElementById('match_team_a').closest('label').hidden = aMode !== 'fixed';
@@ -152,18 +176,34 @@ async function render(main, { role }) {
 
   document.getElementById('match_tournament').onchange = async (e) => {
     currentTournamentId = e.target.value;
-    await refreshSourceOptions(currentTournamentId);
-    const categories = await refreshCategories(currentTournamentId);
-    if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
+    setRaceGuardedSelectsDisabled(true);
+    try {
+      await refreshSourceOptions(currentTournamentId);
+      const categories = await refreshCategories(currentTournamentId);
+      if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
+    } finally {
+      setRaceGuardedSelectsDisabled(false);
+    }
   };
-  document.getElementById('match_category').onchange = (e) =>
-    selectCategory(currentTournamentId, e.target.value);
+  document.getElementById('match_category').onchange = async (e) => {
+    setRaceGuardedSelectsDisabled(true);
+    try {
+      await selectCategory(currentTournamentId, e.target.value);
+    } finally {
+      setRaceGuardedSelectsDisabled(false);
+    }
+  };
 
   if (tournaments[0]) {
     currentTournamentId = tournaments[0].id;
-    await refreshSourceOptions(currentTournamentId);
-    const categories = await refreshCategories(currentTournamentId);
-    if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
+    setRaceGuardedSelectsDisabled(true);
+    try {
+      await refreshSourceOptions(currentTournamentId);
+      const categories = await refreshCategories(currentTournamentId);
+      if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
+    } finally {
+      setRaceGuardedSelectsDisabled(false);
+    }
   }
 
   document.getElementById('matchForm').onsubmit = async (e) => {
@@ -185,7 +225,12 @@ async function render(main, { role }) {
         best_of: Number(document.getElementById('match_best_of').value) || 5,
       });
       await renderTable();
-      await refreshSourceOptions(currentTournamentId);
+      setRaceGuardedSelectsDisabled(true);
+      try {
+        await refreshSourceOptions(currentTournamentId);
+      } finally {
+        setRaceGuardedSelectsDisabled(false);
+      }
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.hidden = false;

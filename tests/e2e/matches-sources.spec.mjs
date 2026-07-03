@@ -38,12 +38,11 @@ test('a KO match with a "winner of" source auto-resolves once the source match i
   await page.click('button[data-screen=matches]');
   await page.selectOption('#match_tournament', { label: 'KO Source Tournament' });
   await page.selectOption('#match_category', { label: 'KO Source Category' });
-  // The tournament-select handler kicks off an async chain (refreshSourceOptions,
-  // refreshCategories, then selectCategory's refreshTeamsAndCourts) that re-populates
-  // #match_team_a/#match_team_b after this call resolves. Without waiting for it to
-  // settle, the very next selectOption() calls below race against that in-flight
-  // refresh, which can clobber the selection back to its default option.
-  await page.waitForLoadState('networkidle');
+  // No explicit wait needed here: matches.js disables the team/court/category/
+  // source selects for the duration of each tournament/category refresh chain,
+  // so Playwright's own actionability checks make the selectOption() calls below
+  // wait for the in-flight refresh to finish before interacting, instead of
+  // racing against it.
 
   // Source match: KO Team A vs KO Team B (fixed teams).
   await page.selectOption('#match_team_a', { label: 'KO Team A' });
