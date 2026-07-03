@@ -84,3 +84,62 @@ test('admin can manually assign a referee to a match and sees a same-country war
   await expect(page.locator('#assignmentsWrap table tbody')).toContainText('Swiss Ref');
   await expect(page.locator('#assignmentsWrap table tbody')).toContainText('1st Referee');
 });
+
+test('admin can auto-assign referees for a category and commit the preview', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  await page.click('button[data-screen=tournaments]');
+  await page.fill('#t_name', 'Referees Auto Tournament');
+  await page.fill('#t_start', '2026-07-23');
+  await page.fill('#t_end', '2026-07-26');
+  await page.click('#tournamentForm button[type=submit]');
+
+  await page.click('button[data-screen=categories]');
+  await page.selectOption('#c_tournament', { label: 'Referees Auto Tournament' });
+  await page.fill('#c_name', 'Referees Auto Category');
+  await page.selectOption('#c_format', 'round_robin');
+  await page.click('#categoryForm button[type=submit]');
+
+  await page.click('button[data-screen=courts]');
+  await page.selectOption('#court_tournament', { label: 'Referees Auto Tournament' });
+  await page.fill('#court_name', 'Referees Auto Court');
+  await page.click('#courtForm button[type=submit]');
+
+  await page.click('button[data-screen=teams]');
+  await page.selectOption('#team_tournament', { label: 'Referees Auto Tournament' });
+  await page.selectOption('#team_category', { label: 'Referees Auto Category' });
+  for (const name of ['RA Team A', 'RA Team B']) {
+    await page.fill('#team_name', name);
+    await page.click('#teamForm button[type=submit]');
+    await expect(page.locator('table tbody')).toContainText(name);
+  }
+
+  await page.click('button[data-screen=schedule]');
+  await page.selectOption('#sg_tournament', { label: 'Referees Auto Tournament' });
+  await page.selectOption('#sg_category', { label: 'Referees Auto Category' });
+  await page.fill('#sg_start', '2026-07-23T09:00');
+  await page.fill('#sg_end', '2026-07-23T18:00');
+  await page.click('#sg_preview');
+  await expect(page.locator('#sg_preview_wrap table tbody tr')).toHaveCount(1);
+  await page.click('#sg_commit');
+  await expect(page.locator('#sg_preview_wrap')).toContainText('Spielplan angelegt');
+
+  await page.click('button[data-screen=referees]');
+  await page.selectOption('#ref_tournament', { label: 'Referees Auto Tournament' });
+  for (const name of ['Auto Ref One', 'Auto Ref Two']) {
+    await page.fill('#ref_name', name);
+    await page.fill('#ref_country', 'Neutralia');
+    await page.click('#refForm button[type=submit]');
+    await expect(page.locator('#refTableWrap table tbody')).toContainText(name);
+  }
+
+  await page.locator('#auto_roles input[value="Recording Clerk"]').check();
+  for (const role of ['1st Referee', '2nd Referee', 'Assistant Referee 1', 'Assistant Referee 2']) {
+    await page.locator(`#auto_roles input[value="${role}"]`).uncheck();
+  }
+  await page.click('#auto_preview');
+  await expect(page.locator('#auto_preview_wrap table tbody tr')).toHaveCount(1);
+  await expect(page.locator('#auto_preview_wrap table tbody')).toContainText('Recording Clerk');
+  await page.click('#auto_commit');
+  await expect(page.locator('#auto_preview_wrap')).toContainText('Zuweisungen angelegt');
+});

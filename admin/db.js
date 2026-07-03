@@ -234,7 +234,7 @@ export async function listMatchIncidents(matchId) {
 export async function listMatchesForTournament(tournamentId) {
   const { data, error } = await getClient()
     .from('matches')
-    .select('id, category_id, team_a_id, team_b_id, court_id, scheduled_time, categories!inner(tournament_id)')
+    .select('id, category_id, team_a_id, team_b_id, court_id, scheduled_time, team_a:team_a_id(name), team_b:team_b_id(name), categories!inner(tournament_id)')
     .eq('categories.tournament_id', tournamentId);
   if (error) throw error;
   return data;
@@ -286,5 +286,20 @@ export async function createRefereeAssignment({ match_id, referee_id, role }) {
 
 export async function deleteRefereeAssignment(id) {
   const { error } = await getClient().from('referee_assignments').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function listAssignmentsForMatchIds(matchIds) {
+  if (matchIds.length === 0) return [];
+  const { data, error } = await getClient()
+    .from('referee_assignments')
+    .select('referee_id, match_id, role')
+    .in('match_id', matchIds);
+  if (error) throw error;
+  return data;
+}
+
+export async function createRefereeAssignments(rows) {
+  const { error } = await getClient().from('referee_assignments').insert(rows);
   if (error) throw error;
 }

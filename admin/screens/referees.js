@@ -1,8 +1,10 @@
 import { registerScreen } from '../app.js';
 import {
-  listTournaments, listCategories, listMatches, listReferees, createReferee, deleteReferee,
-  listAssignmentsForMatch, createRefereeAssignment, deleteRefereeAssignment, escapeHtml,
+  listTournaments, listCategories, listMatches, listMatchesForTournament, listReferees, createReferee, deleteReferee,
+  listAssignmentsForMatch, createRefereeAssignment, deleteRefereeAssignment,
+  listAssignmentsForMatchIds, createRefereeAssignments, escapeHtml,
 } from '../db.js';
+import { assignReferees } from '../referee-assignment-generator.js';
 
 const KNOWN_ROLES = ['1st Referee', '2nd Referee', 'Recording Clerk', 'Assistant Referee 1', 'Assistant Referee 2'];
 
@@ -41,6 +43,15 @@ async function render(main, { role }) {
       <button type="submit">Zuweisen</button>
       <p id="assignError" class="error" hidden></p>
     </form>
+
+    <h3>Automatische Zuteilung</h3>
+    <fieldset id="auto_categories"><legend>Kategorien</legend></fieldset>
+    <fieldset id="auto_roles"><legend>Rollen</legend>
+      ${KNOWN_ROLES.map((r) => `<label><input type="checkbox" value="${r}" checked> ${r}</label>`).join('')}
+    </fieldset>
+    <button id="auto_preview">Vorschau berechnen</button>
+    <p id="autoError" class="error" hidden></p>
+    <div id="auto_preview_wrap"></div>
   `;
 
   let currentTournamentId = null;
@@ -83,6 +94,7 @@ async function render(main, { role }) {
     await refreshAssignReferees();
     const categories = await refreshAssignCategories(tournamentId);
     if (categories[0]) await selectCategoryForAssignment(categories[0].id);
+    await refreshAutoCategories(tournamentId);
   }
 
   document.getElementById('ref_tournament').onchange = (e) => selectTournament(e.target.value);
@@ -214,6 +226,83 @@ async function render(main, { role }) {
         role,
       });
       await renderAssignments();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  };
+
+  async function refreshAutoCategories(tournamentId) {
+    const categories = await listCategories(tournamentId);
+    document.getElementById('auto_categories').innerHTML = '<legend>Kategorien</legend>' + categories.map((c) =>
+      `<label><input type="checkbox" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+  }
+
+  let autoPreviewResults = null;
+
+  document.getElementById('auto_preview').onclick = async () => {
+    const errorEl = document.getElementById('autoError');
+    errorEl.hidden = true;
+    autoPreviewResults = null;
+    document.getElementById('auto_preview_wrap').innerHTML = '';
+    try {
+      const categoryIds = [...document.querySelectorAll('#auto_categories input:checked')].map((el) => el.value);
+      const roles = [...document.querySelectorAll('#auto_roles input:checked')].map((el) => el.value);
+      if (categoryIds.length === 0) throw new Error('Mindestens eine Kategorie auswählen.');
+      if (roles.length === 0) throw new Error('Mindestens eine Rolle auswählen.');
+
+      const [allTournamentMatches, referees] = await Promise.all([
+        listMatchesForTournament(currentTournamentId),
+        listReferees(currentTournamentId),
+      ]);
+      const matches = allTournamentMatches
+        .filter((m) => categoryIds.includes(m.category_id))
+        .map((m) => ({
+          id: m.id,
+          scheduled_time: m.scheduled_time,
+          team_a_name: m.team_a?.name ?? null,
+          team_b_name: m.team_b?.name ?? null,
+        }));
+      const matchIds = allTournamentMatches.map((m) => m.id);
+      const existingAssignments = await listAssignmentsForMatchIds(matchIds);
+
+      const results = assignReferees({ matches, referees, existingAssignments, roles });
+      autoPreviewResults = results;
+
+      const matchLabel = Object.fromEntries(matches.map((m) => [m.id, `${escapeHtml(m.team_a_name ?? '?')} vs ${escapeHtml(m.team_b_name ?? '?')}`]));
+      const refereeName = Object.fromEntries(referees.map((r) => [r.id, r.name]));
+
+      const unresolvedCount = results.filter((r) => r.refereeId === null).length;
+
+      document.getElementById('auto_preview_wrap').innerHTML = `
+        ${unresolvedCount > 0 ? `<p class="warning">${unresolvedCount} Rolle(n) konnten nicht zugeteilt werden.</p>` : ''}
+        <table>
+          <thead><tr><th>Match</th><th>Rolle</th><th>Schiedsrichter</th></tr></thead>
+          <tbody>${results.map((r) => `
+            <tr>
+              <td>${matchLabel[r.matchId]}</td>
+              <td>${escapeHtml(r.role)}</td>
+              <td>${r.refereeId ? escapeHtml(refereeName[r.refereeId]) : '— nicht zuteilbar —'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <button id="auto_commit">Anlegen</button>
+      `;
+
+      document.getElementById('auto_commit').onclick = async () => {
+        try {
+          const rows = autoPreviewResults
+            .filter((r) => r.refereeId !== null)
+            .map((r) => ({ match_id: r.matchId, referee_id: r.refereeId, role: r.role }));
+          await createRefereeAssignments(rows);
+          document.getElementById('auto_preview_wrap').innerHTML = '<p>Zuweisungen angelegt.</p>';
+          autoPreviewResults = null;
+          await renderAssignments();
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.hidden = false;
+        }
+      };
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.hidden = false;
