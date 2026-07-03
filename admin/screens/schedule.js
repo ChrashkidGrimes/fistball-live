@@ -20,8 +20,8 @@ async function render(main, { role }) {
     <fieldset id="sg_courts"><legend>Courts</legend></fieldset>
     <label>Start<input id="sg_start" type="datetime-local"></label>
     <label>Ende<input id="sg_end" type="datetime-local"></label>
-    <label>Match-Dauer (Min)<input id="sg_duration" type="number" value="40"></label>
-    <label>Pause (Min)<input id="sg_break" type="number" value="5"></label>
+    <label>Match-Dauer (Min)<input id="sg_duration" type="number" value="40" min="1"></label>
+    <label>Pause (Min)<input id="sg_break" type="number" value="5" min="0"></label>
     <label>Rundenbezeichnung<input id="sg_round_label" value="Qualification round"></label>
     <label>Best of<input id="sg_best_of" type="number" value="5"></label>
     <button id="sg_preview">Vorschau berechnen</button>

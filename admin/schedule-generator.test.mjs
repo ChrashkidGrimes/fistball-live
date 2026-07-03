@@ -84,3 +84,18 @@ test('assignScheduleSlots reports missing slots when the time range is too short
   assert.equal(result.ok, false);
   assert.equal(result.missingSlots, 3);
 });
+
+test('assignScheduleSlots guards against zero-duration infinite loop', () => {
+  const rounds = [[['A', 'B'], ['C', 'D']]];
+  const result = assignScheduleSlots({
+    rounds,
+    courtIds: ['court1'],
+    startTime: '2026-07-23T09:00:00Z',
+    endTime: '2026-07-23T18:00:00Z',
+    matchDurationMinutes: 0,
+    breakMinutes: 0,
+    existingMatches: [],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.missingSlots, 2);
+});

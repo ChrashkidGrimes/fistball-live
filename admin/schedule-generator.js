@@ -21,6 +21,16 @@ export function computeRoundRobinRounds(teamIds) {
 
 export function assignScheduleSlots({ rounds, courtIds, startTime, endTime, matchDurationMinutes, breakMinutes, existingMatches }) {
   const stepMs = (matchDurationMinutes + breakMinutes) * 60000;
+
+  // Guard against zero or negative step: would cause infinite loop
+  if (stepMs <= 0) {
+    let missingSlots = 0;
+    for (const round of rounds) {
+      missingSlots += round.length;
+    }
+    return { ok: false, missingSlots };
+  }
+
   const start = new Date(startTime).getTime();
   const end = new Date(endTime).getTime();
 
