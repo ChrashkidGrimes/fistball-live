@@ -194,18 +194,6 @@ async function render(main, { role }) {
     }
   };
 
-  if (tournaments[0]) {
-    currentTournamentId = tournaments[0].id;
-    setRaceGuardedSelectsDisabled(true);
-    try {
-      await refreshSourceOptions(currentTournamentId);
-      const categories = await refreshCategories(currentTournamentId);
-      if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
-    } finally {
-      setRaceGuardedSelectsDisabled(false);
-    }
-  }
-
   document.getElementById('matchForm').onsubmit = async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('matchError');
@@ -236,6 +224,18 @@ async function render(main, { role }) {
       errorEl.hidden = false;
     }
   };
+
+  if (tournaments[0]) {
+    currentTournamentId = tournaments[0].id;
+    setRaceGuardedSelectsDisabled(true);
+    try {
+      await refreshSourceOptions(currentTournamentId);
+      const categories = await refreshCategories(currentTournamentId);
+      if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
+    } finally {
+      setRaceGuardedSelectsDisabled(false);
+    }
+  }
 }
 
 registerScreen('matches', { render });

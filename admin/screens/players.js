@@ -90,11 +90,6 @@ async function render(main) {
     await renderTable();
   };
 
-  if (tournaments[0]) {
-    const categories = await refreshCategories(tournaments[0].id);
-    if (categories[0]) await selectFirstTeamAndRender(categories[0].id);
-  }
-
   document.getElementById('playerForm').onsubmit = async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('playerError');
@@ -114,6 +109,11 @@ async function render(main) {
       errorEl.hidden = false;
     }
   };
+
+  if (tournaments[0]) {
+    const categories = await refreshCategories(tournaments[0].id);
+    if (categories[0]) await selectFirstTeamAndRender(categories[0].id);
+  }
 }
 
 registerScreen('players', { render });

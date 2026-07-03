@@ -34,7 +34,6 @@ async function render(main) {
   }
 
   document.getElementById('categoryTournamentSelect').onchange = (e) => renderTable(e.target.value);
-  if (tournaments[0]) await renderTable(tournaments[0].id);
 
   document.getElementById('categoryForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -54,6 +53,8 @@ async function render(main) {
       errorEl.hidden = false;
     }
   };
+
+  if (tournaments[0]) await renderTable(tournaments[0].id);
 }
 
 registerScreen('categories', { render });

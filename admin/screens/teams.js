@@ -51,11 +51,6 @@ async function render(main) {
   };
   document.getElementById('team_category').onchange = (e) => renderTable(e.target.value);
 
-  if (tournaments[0]) {
-    const categories = await refreshCategories(tournaments[0].id);
-    if (categories[0]) await renderTable(categories[0].id);
-  }
-
   document.getElementById('teamForm').onsubmit = async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('teamError');
@@ -72,6 +67,11 @@ async function render(main) {
       errorEl.hidden = false;
     }
   };
+
+  if (tournaments[0]) {
+    const categories = await refreshCategories(tournaments[0].id);
+    if (categories[0]) await renderTable(categories[0].id);
+  }
 }
 
 registerScreen('teams', { render });
