@@ -98,3 +98,14 @@ test('prefers a referee who was not assigned the immediately preceding time slot
   assert.equal(result[0].matchId, 'm2');
   assert.equal(result[0].refereeId, 'r2');
 });
+
+test('respects an existing assignment in a match not included in the matches param (deselected category)', () => {
+  const matches = [match('m1', '2026-07-23T09:00:00Z', 'A', 'B')];
+  const referees = [referee('r1', 'Switzerland')];
+  const existingAssignments = [
+    { referee_id: 'r1', match_id: 'm_other_category', role: 'Recording Clerk', scheduled_time: '2026-07-23T09:00:00Z' },
+  ];
+  const result = assignReferees({ matches, referees, existingAssignments, roles: ['Recording Clerk'] });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].refereeId, null);
+});

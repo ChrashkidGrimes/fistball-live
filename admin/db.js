@@ -293,10 +293,15 @@ export async function listAssignmentsForMatchIds(matchIds) {
   if (matchIds.length === 0) return [];
   const { data, error } = await getClient()
     .from('referee_assignments')
-    .select('referee_id, match_id, role')
+    .select('referee_id, match_id, role, matches!inner(scheduled_time)')
     .in('match_id', matchIds);
   if (error) throw error;
-  return data;
+  return data.map((a) => ({
+    referee_id: a.referee_id,
+    match_id: a.match_id,
+    role: a.role,
+    scheduled_time: a.matches.scheduled_time,
+  }));
 }
 
 export async function createRefereeAssignments(rows) {

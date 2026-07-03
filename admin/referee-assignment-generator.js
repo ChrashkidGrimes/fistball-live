@@ -1,3 +1,9 @@
+function existingAssignmentTime(a, matchesById) {
+  if (a.scheduled_time !== undefined) return a.scheduled_time;
+  const m = matchesById.get(a.match_id);
+  return m ? m.scheduled_time : undefined;
+}
+
 export function assignReferees({ matches, referees, existingAssignments, roles }) {
   const countAssignments = new Map();
   for (const r of referees) countAssignments.set(r.id, 0);
@@ -9,8 +15,8 @@ export function assignReferees({ matches, referees, existingAssignments, roles }
 
   const assignedAtTime = new Set();
   for (const a of existingAssignments) {
-    const m = matchesById.get(a.match_id);
-    if (m && m.scheduled_time) assignedAtTime.add(`${a.referee_id}|${m.scheduled_time}`);
+    const t = existingAssignmentTime(a, matchesById);
+    if (t) assignedAtTime.add(`${a.referee_id}|${t}`);
   }
 
   const inMatch = new Map();
@@ -26,10 +32,10 @@ export function assignReferees({ matches, referees, existingAssignments, roles }
 
   const lastSlotByReferee = new Map();
   for (const a of existingAssignments) {
-    const m = matchesById.get(a.match_id);
-    if (m && m.scheduled_time && timeIndex.has(m.scheduled_time)) {
+    const t = existingAssignmentTime(a, matchesById);
+    if (t && timeIndex.has(t)) {
       if (!lastSlotByReferee.has(a.referee_id)) lastSlotByReferee.set(a.referee_id, new Set());
-      lastSlotByReferee.get(a.referee_id).add(timeIndex.get(m.scheduled_time));
+      lastSlotByReferee.get(a.referee_id).add(timeIndex.get(t));
     }
   }
 
