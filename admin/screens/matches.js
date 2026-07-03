@@ -1,7 +1,14 @@
 import { registerScreen } from '../app.js';
 import {
-  listTournaments, listCategories, listTeams, listCourts, listMatches, createMatch, finishMatch, escapeHtml,
+  listTournaments, listCategories, listTeams, listCourts, listMatches, listMatchSourceOptions,
+  createMatch, finishMatch, escapeHtml,
 } from '../db.js';
+
+function sourceLabel(sourceMatch, outcome) {
+  if (!sourceMatch) return '—';
+  const label = sourceMatch.sheet_match_nr ? `#${sourceMatch.sheet_match_nr}` : (sourceMatch.round_label || 'Match');
+  return outcome === 'winner' ? `Sieger von ${label}` : `Verlierer von ${label}`;
+}
 
 async function render(main, { role }) {
   const tournaments = await listTournaments();
@@ -13,8 +20,24 @@ async function render(main, { role }) {
     <div id="matchTableWrap"></div>
     <p id="matchListError" class="error" hidden></p>
     <form id="matchForm" class="entity-form">
+      <label>Team-A-Modus
+        <select id="match_team_a_mode">
+          <option value="fixed">Festes Team</option>
+          <option value="winner">Sieger von Match</option>
+          <option value="loser">Verlierer von Match</option>
+        </select>
+      </label>
       <label>Team A<select id="match_team_a"></select></label>
+      <label>Team A — Quell-Match<select id="match_team_a_source"></select></label>
+      <label>Team-B-Modus
+        <select id="match_team_b_mode">
+          <option value="fixed">Festes Team</option>
+          <option value="winner">Sieger von Match</option>
+          <option value="loser">Verlierer von Match</option>
+        </select>
+      </label>
       <label>Team B<select id="match_team_b"></select></label>
+      <label>Team B — Quell-Match<select id="match_team_b_source"></select></label>
       <label>Court<select id="match_court"></select></label>
       <label>Runde<input id="match_round"></label>
       <label>Best of<input id="match_best_of" type="number" value="5"></label>
@@ -23,17 +46,31 @@ async function render(main, { role }) {
     </form>
   `;
 
+  let currentTournamentId = null;
   let currentCategoryId = null;
+
+  function toggleSourceFields() {
+    const aMode = document.getElementById('match_team_a_mode').value;
+    document.getElementById('match_team_a').closest('label').hidden = aMode !== 'fixed';
+    document.getElementById('match_team_a_source').closest('label').hidden = aMode === 'fixed';
+    const bMode = document.getElementById('match_team_b_mode').value;
+    document.getElementById('match_team_b').closest('label').hidden = bMode !== 'fixed';
+    document.getElementById('match_team_b_source').closest('label').hidden = bMode === 'fixed';
+  }
+  document.getElementById('match_team_a_mode').onchange = toggleSourceFields;
+  document.getElementById('match_team_b_mode').onchange = toggleSourceFields;
+  toggleSourceFields();
 
   async function renderTable() {
     const matches = currentCategoryId ? await listMatches(currentCategoryId) : [];
     document.getElementById('matchTableWrap').innerHTML = `
       <table>
-        <thead><tr><th>Team A</th><th>Team B</th><th>Court</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Team A</th><th>Team B</th><th>Runde</th><th>Court</th><th>Status</th><th></th></tr></thead>
         <tbody>${matches.map((m) => `
           <tr>
-            <td>${escapeHtml(m.team_a?.name ?? '')}</td>
-            <td>${escapeHtml(m.team_b?.name ?? '')}</td>
+            <td>${m.team_a ? escapeHtml(m.team_a.name) : `<em>${escapeHtml(sourceLabel(m.team_a_source_match, m.team_a_source_outcome))}</em>`}</td>
+            <td>${m.team_b ? escapeHtml(m.team_b.name) : `<em>${escapeHtml(sourceLabel(m.team_b_source_match, m.team_b_source_outcome))}</em>`}</td>
+            <td>${escapeHtml(m.round_label ?? '')}</td>
             <td>${escapeHtml(m.court?.name ?? '')}</td>
             <td>${escapeHtml(m.status)}</td>
             <td>${role === 'admin' && m.status !== 'finished' && m.team_a_id && m.team_b_id
@@ -97,6 +134,16 @@ async function render(main, { role }) {
       `<option value="">—</option>` + courts.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
   }
 
+  async function refreshSourceOptions(tournamentId) {
+    const options = await listMatchSourceOptions(tournamentId);
+    const html = options.map((m) => {
+      const label = m.sheet_match_nr ? `#${m.sheet_match_nr}` : (m.round_label || m.id);
+      return `<option value="${m.id}">${escapeHtml(label)} (${escapeHtml(m.team_a?.name ?? '?')} vs ${escapeHtml(m.team_b?.name ?? '?')})</option>`;
+    }).join('');
+    document.getElementById('match_team_a_source').innerHTML = html;
+    document.getElementById('match_team_b_source').innerHTML = html;
+  }
+
   async function selectCategory(tournamentId, categoryId) {
     currentCategoryId = categoryId;
     await refreshTeamsAndCourts(tournamentId, categoryId);
@@ -104,30 +151,41 @@ async function render(main, { role }) {
   }
 
   document.getElementById('match_tournament').onchange = async (e) => {
-    const categories = await refreshCategories(e.target.value);
-    if (categories[0]) await selectCategory(e.target.value, categories[0].id);
+    currentTournamentId = e.target.value;
+    await refreshSourceOptions(currentTournamentId);
+    const categories = await refreshCategories(currentTournamentId);
+    if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
   };
   document.getElementById('match_category').onchange = (e) =>
-    selectCategory(document.getElementById('match_tournament').value, e.target.value);
+    selectCategory(currentTournamentId, e.target.value);
 
   if (tournaments[0]) {
-    const categories = await refreshCategories(tournaments[0].id);
-    if (categories[0]) await selectCategory(tournaments[0].id, categories[0].id);
+    currentTournamentId = tournaments[0].id;
+    await refreshSourceOptions(currentTournamentId);
+    const categories = await refreshCategories(currentTournamentId);
+    if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
   }
 
   document.getElementById('matchForm').onsubmit = async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('matchError');
     try {
+      const aMode = document.getElementById('match_team_a_mode').value;
+      const bMode = document.getElementById('match_team_b_mode').value;
       await createMatch({
         category_id: currentCategoryId,
-        team_a_id: document.getElementById('match_team_a').value,
-        team_b_id: document.getElementById('match_team_b').value,
+        team_a_id: aMode === 'fixed' ? document.getElementById('match_team_a').value : null,
+        team_a_source_match_id: aMode === 'fixed' ? null : document.getElementById('match_team_a_source').value,
+        team_a_source_outcome: aMode === 'fixed' ? null : aMode,
+        team_b_id: bMode === 'fixed' ? document.getElementById('match_team_b').value : null,
+        team_b_source_match_id: bMode === 'fixed' ? null : document.getElementById('match_team_b_source').value,
+        team_b_source_outcome: bMode === 'fixed' ? null : bMode,
         court_id: document.getElementById('match_court').value,
         round_label: document.getElementById('match_round').value.trim(),
         best_of: Number(document.getElementById('match_best_of').value) || 5,
       });
       await renderTable();
+      await refreshSourceOptions(currentTournamentId);
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.hidden = false;

@@ -68,18 +68,44 @@ export async function deleteTeam(id) {
 export async function listMatches(categoryId) {
   const { data, error } = await getClient()
     .from('matches')
-    .select('id, status, round_label, best_of, team_a_id, team_b_id, winner_team_id, team_a:team_a_id(name), team_b:team_b_id(name), court:court_id(name)')
+    .select(`
+      id, status, round_label, best_of, team_a_id, team_b_id, winner_team_id,
+      team_a:team_a_id(name), team_b:team_b_id(name), court:court_id(name),
+      team_a_source_outcome, team_a_source_match:team_a_source_match_id(sheet_match_nr, round_label),
+      team_b_source_outcome, team_b_source_match:team_b_source_match_id(sheet_match_nr, round_label)
+    `)
     .eq('category_id', categoryId)
     .order('scheduled_time');
   if (error) throw error;
   return data;
 }
 
-export async function createMatch({ category_id, team_a_id, team_b_id, court_id, round_label, best_of }) {
+export async function createMatch({
+  category_id, team_a_id, team_b_id, team_a_source_match_id, team_a_source_outcome,
+  team_b_source_match_id, team_b_source_outcome, court_id, round_label, best_of,
+}) {
   const { error } = await getClient().from('matches').insert({
-    category_id, team_a_id, team_b_id, court_id: court_id || null, round_label: round_label || null, best_of: best_of || 5,
+    category_id,
+    team_a_id: team_a_id || null,
+    team_b_id: team_b_id || null,
+    team_a_source_match_id: team_a_source_match_id || null,
+    team_a_source_outcome: team_a_source_outcome || null,
+    team_b_source_match_id: team_b_source_match_id || null,
+    team_b_source_outcome: team_b_source_outcome || null,
+    court_id: court_id || null,
+    round_label: round_label || null,
+    best_of: best_of || 5,
   });
   if (error) throw error;
+}
+
+export async function listMatchSourceOptions(tournamentId) {
+  const { data, error } = await getClient()
+    .from('matches')
+    .select('id, sheet_match_nr, round_label, team_a:team_a_id(name), team_b:team_b_id(name), categories!inner(tournament_id)')
+    .eq('categories.tournament_id', tournamentId);
+  if (error) throw error;
+  return data;
 }
 
 export async function finishMatch(id, winnerTeamIdOverride) {
