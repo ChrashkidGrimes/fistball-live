@@ -68,7 +68,7 @@ export async function deleteTeam(id) {
 export async function listMatches(categoryId) {
   const { data, error } = await getClient()
     .from('matches')
-    .select('id, status, round_label, best_of, team_a:team_a_id(name), team_b:team_b_id(name), court:court_id(name)')
+    .select('id, status, round_label, best_of, team_a_id, team_b_id, winner_team_id, team_a:team_a_id(name), team_b:team_b_id(name), court:court_id(name)')
     .eq('category_id', categoryId)
     .order('scheduled_time');
   if (error) throw error;
@@ -82,8 +82,11 @@ export async function createMatch({ category_id, team_a_id, team_b_id, court_id,
   if (error) throw error;
 }
 
-export async function finishMatch(id) {
-  const { error } = await getClient().from('matches').update({ status: 'finished' }).eq('id', id);
+export async function finishMatch(id, winnerTeamIdOverride) {
+  const { error } = await getClient().rpc('finish_match', {
+    p_match_id: id,
+    p_winner_team_id_override: winnerTeamIdOverride || null,
+  });
   if (error) throw error;
 }
 

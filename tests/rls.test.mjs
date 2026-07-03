@@ -67,14 +67,11 @@ test('anon cannot insert a tournament', async () => {
   assert.ok(error, 'expected RLS to reject the insert');
 });
 
-test('admin can set a match to finished', async () => {
+test('admin cannot set a match to finished via direct update (guarded by trigger, must use finish_match())', async () => {
   const admin = await signIn('admin@fistball-ems.local', adminPassword);
-  const { data, error } = await admin.from('matches')
-    .update({ status: 'finished' }).eq('id', matchId).select();
-  assert.equal(error, null);
-  assert.equal(data.length, 1);
-  assert.equal(data[0].status, 'finished');
-  await service.from('matches').update({ status: 'scheduled' }).eq('id', matchId);
+  const { error } = await admin.from('matches')
+    .update({ status: 'finished' }).eq('id', matchId);
+  assert.ok(error, 'expected the direct-finish guard trigger to reject this update');
 });
 
 test('scorer cannot directly update a match', async () => {

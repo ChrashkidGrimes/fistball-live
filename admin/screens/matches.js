@@ -11,6 +11,7 @@ async function render(main, { role }) {
     <label>Turnier<select id="match_tournament">${tOptions}</select></label>
     <label>Kategorie<select id="match_category"></select></label>
     <div id="matchTableWrap"></div>
+    <p id="matchListError" class="error" hidden></p>
     <form id="matchForm" class="entity-form">
       <label>Team A<select id="match_team_a"></select></label>
       <label>Team B<select id="match_team_b"></select></label>
@@ -35,15 +36,48 @@ async function render(main, { role }) {
             <td>${escapeHtml(m.team_b?.name ?? '')}</td>
             <td>${escapeHtml(m.court?.name ?? '')}</td>
             <td>${escapeHtml(m.status)}</td>
-            <td>${role === 'admin' && m.status !== 'finished'
-              ? `<button data-finish="${m.id}">Finished</button>` : ''}</td>
+            <td>${role === 'admin' && m.status !== 'finished' && m.team_a_id && m.team_b_id
+              ? `<button data-finish="${m.id}">Finished</button>
+                 <button data-forfeit-toggle="${m.id}">Forfeit</button>
+                 <span id="forfeit-${m.id}" hidden>
+                   <button data-forfeit-winner="${m.id}|${m.team_a_id}">${escapeHtml(m.team_a.name)} gewinnt</button>
+                   <button data-forfeit-winner="${m.id}|${m.team_b_id}">${escapeHtml(m.team_b.name)} gewinnt</button>
+                 </span>`
+              : ''}</td>
           </tr>`).join('')}
         </tbody>
       </table>`;
+
+    const listErrorEl = document.getElementById('matchListError');
     document.querySelectorAll('[data-finish]').forEach((btn) => {
       btn.onclick = async () => {
-        await finishMatch(btn.dataset.finish);
-        await renderTable();
+        listErrorEl.hidden = true;
+        try {
+          await finishMatch(btn.dataset.finish);
+          await renderTable();
+        } catch (err) {
+          listErrorEl.textContent = err.message;
+          listErrorEl.hidden = false;
+        }
+      };
+    });
+    document.querySelectorAll('[data-forfeit-toggle]').forEach((btn) => {
+      btn.onclick = () => {
+        const span = document.getElementById(`forfeit-${btn.dataset.forfeitToggle}`);
+        span.hidden = !span.hidden;
+      };
+    });
+    document.querySelectorAll('[data-forfeit-winner]').forEach((btn) => {
+      btn.onclick = async () => {
+        const [matchId, winnerId] = btn.dataset.forfeitWinner.split('|');
+        listErrorEl.hidden = true;
+        try {
+          await finishMatch(matchId, winnerId);
+          await renderTable();
+        } catch (err) {
+          listErrorEl.textContent = err.message;
+          listErrorEl.hidden = false;
+        }
       };
     });
   }

@@ -68,7 +68,8 @@ test('admin can create a match and mark it finished', async ({ page }) => {
   await expect(page.locator('table tbody')).toContainText('Playwright FC');
 
   const row = page.locator('tr', { hasText: 'Playwright FC' });
-  await row.locator('button[data-finish]').click();
+  await row.locator('button[data-forfeit-toggle]').click();
+  await row.locator('button[data-forfeit-winner]').first().click();
   await expect(row).toContainText('finished');
 });
 
