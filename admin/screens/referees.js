@@ -52,6 +52,9 @@ async function render(main, { role }) {
     <button id="auto_preview">Vorschau berechnen</button>
     <p id="autoError" class="error" hidden></p>
     <div id="auto_preview_wrap"></div>
+
+    <h3>Workload-Übersicht</h3>
+    <div id="workloadWrap"></div>
   `;
 
   let currentTournamentId = null;
@@ -95,6 +98,7 @@ async function render(main, { role }) {
     const categories = await refreshAssignCategories(tournamentId);
     if (categories[0]) await selectCategoryForAssignment(categories[0].id);
     await refreshAutoCategories(tournamentId);
+    await renderWorkload();
   }
 
   document.getElementById('ref_tournament').onchange = (e) => selectTournament(e.target.value);
@@ -115,6 +119,7 @@ async function render(main, { role }) {
       document.getElementById('ref_country').value = '';
       await renderRefTable();
       await refreshAssignReferees();
+      await renderWorkload();
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.hidden = false;
@@ -166,6 +171,49 @@ async function render(main, { role }) {
         }
       };
     });
+  }
+
+  function dayKey(isoString) {
+    return isoString ? isoString.slice(0, 10) : null;
+  }
+
+  async function renderWorkload() {
+    if (!currentTournamentId) {
+      document.getElementById('workloadWrap').innerHTML = '';
+      return;
+    }
+    const [referees, matches] = await Promise.all([
+      listReferees(currentTournamentId),
+      listMatchesForTournament(currentTournamentId),
+    ]);
+    const matchIds = matches.map((m) => m.id);
+    const assignments = await listAssignmentsForMatchIds(matchIds);
+    const matchById = Object.fromEntries(matches.map((m) => [m.id, m]));
+
+    const days = [...new Set(matches.map((m) => dayKey(m.scheduled_time)).filter(Boolean))].sort();
+
+    const countsByReferee = Object.fromEntries(referees.map((r) => [r.id, { total: 0, byDay: {} }]));
+    for (const a of assignments) {
+      if (!countsByReferee[a.referee_id]) continue;
+      countsByReferee[a.referee_id].total++;
+      const day = dayKey(matchById[a.match_id]?.scheduled_time);
+      if (day) {
+        countsByReferee[a.referee_id].byDay[day] = (countsByReferee[a.referee_id].byDay[day] || 0) + 1;
+      }
+    }
+
+    document.getElementById('workloadWrap').innerHTML = `
+      <table>
+        <thead><tr><th>Name</th><th>Land</th><th>Gesamt</th>${days.map((d) => `<th>${escapeHtml(d)}</th>`).join('')}</tr></thead>
+        <tbody>${referees.map((r) => `
+          <tr>
+            <td>${escapeHtml(r.name)}</td>
+            <td>${escapeHtml(r.country)}</td>
+            <td>${countsByReferee[r.id].total}</td>
+            ${days.map((d) => `<td>${countsByReferee[r.id].byDay[d] || 0}</td>`).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
   }
 
   async function selectCategoryForAssignment(categoryId) {
@@ -226,6 +274,7 @@ async function render(main, { role }) {
         role,
       });
       await renderAssignments();
+      await renderWorkload();
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.hidden = false;
@@ -298,6 +347,7 @@ async function render(main, { role }) {
           document.getElementById('auto_preview_wrap').innerHTML = '<p>Zuweisungen angelegt.</p>';
           autoPreviewResults = null;
           await renderAssignments();
+          await renderWorkload();
         } catch (err) {
           errorEl.textContent = err.message;
           errorEl.hidden = false;

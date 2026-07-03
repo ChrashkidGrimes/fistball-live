@@ -143,3 +143,55 @@ test('admin can auto-assign referees for a category and commit the preview', asy
   await page.click('#auto_commit');
   await expect(page.locator('#auto_preview_wrap')).toContainText('Zuweisungen angelegt');
 });
+
+test('workload overview shows the correct total after an assignment', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  await page.click('button[data-screen=tournaments]');
+  await page.fill('#t_name', 'Referees Workload Tournament');
+  await page.fill('#t_start', '2026-07-23');
+  await page.fill('#t_end', '2026-07-26');
+  await page.click('#tournamentForm button[type=submit]');
+
+  await page.click('button[data-screen=categories]');
+  await page.selectOption('#c_tournament', { label: 'Referees Workload Tournament' });
+  await page.fill('#c_name', 'Referees Workload Category');
+  await page.selectOption('#c_format', 'round_robin');
+  await page.click('#categoryForm button[type=submit]');
+
+  await page.click('button[data-screen=teams]');
+  await page.selectOption('#team_tournament', { label: 'Referees Workload Tournament' });
+  await page.selectOption('#team_category', { label: 'Referees Workload Category' });
+  for (const name of ['RW Team A', 'RW Team B']) {
+    await page.fill('#team_name', name);
+    await page.click('#teamForm button[type=submit]');
+    await expect(page.locator('table tbody')).toContainText(name);
+  }
+
+  await page.click('button[data-screen=matches]');
+  await page.selectOption('#match_tournament', { label: 'Referees Workload Tournament' });
+  await page.selectOption('#match_category', { label: 'Referees Workload Category' });
+  await page.selectOption('#match_team_a', { label: 'RW Team A' });
+  await page.selectOption('#match_team_b', { label: 'RW Team B' });
+  await page.fill('#match_round', 'RW Match');
+  await page.click('#matchForm button[type=submit]');
+  await expect(page.locator('table tbody')).toContainText('RW Match');
+
+  await page.click('button[data-screen=referees]');
+  await page.selectOption('#ref_tournament', { label: 'Referees Workload Tournament' });
+  await page.fill('#ref_name', 'Workload Ref');
+  await page.fill('#ref_country', 'Neutralia');
+  await page.click('#refForm button[type=submit]');
+  await expect(page.locator('#workloadWrap table tbody')).toContainText('Workload Ref');
+  await expect(page.locator('#workloadWrap table tbody tr', { hasText: 'Workload Ref' })).toContainText('0');
+
+  await page.selectOption('#assign_category', { label: 'Referees Workload Category' });
+  await page.selectOption('#assign_match', { label: 'RW Match (RW Team A vs RW Team B)' });
+  await page.selectOption('#assign_referee', { label: 'Workload Ref (Neutralia)' });
+  await page.selectOption('#assign_role_select', '1st Referee');
+  await page.click('#assignForm button[type=submit]');
+  await expect(page.locator('#assignmentsWrap table tbody')).toContainText('Workload Ref');
+
+  const workloadRow = page.locator('#workloadWrap table tbody tr', { hasText: 'Workload Ref' });
+  await expect(workloadRow.locator('td').nth(2)).toHaveText('1');
+});
