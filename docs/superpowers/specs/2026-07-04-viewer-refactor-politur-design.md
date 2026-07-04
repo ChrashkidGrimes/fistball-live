@@ -22,6 +22,9 @@ getestet).
 2. UX-Politur im bestehenden Design: Skeleton-Loader, einheitliche
    Leere-Zustände, Barrierefreiheit, bessere mobile Navigation, sanfte
    View-Übergänge.
+3. Sicherheits-Härtung: vendored Supabase-Client statt esm.sh-CDN
+   (Vendor-Datei entsteht in Teilprojekt 6), Content-Security-Policy,
+   Escaping-Audit, robustes Parsen der `localStorage`-Caches.
 
 Teilprojekt 8 (Live-Tab, Spieldetails, Ticker) baut auf der neuen
 Modulstruktur auf und ist bewusst getrennt.
@@ -64,8 +67,39 @@ Regeln für den Schnitt:
 - Zirkularität vermeiden: Views importieren aus `state`/`standings`/
   `meta`, nie umgekehrt; `app.js` importiert alles und reicht
   Callbacks (z. B. Re-Render bei Chip-Klick) explizit weiter.
-- `sw.js`: alle neuen `js/`-Dateien in die `SHELL`-Liste, neue
-  Cache-`VERSION`, damit Bestandsclients das Update ziehen.
+- `sw.js`: alle neuen `js/`-Dateien und der vendored Supabase-Client
+  in die `SHELL`-Liste, neue Cache-`VERSION`, damit Bestandsclients
+  das Update ziehen.
+
+## Sicherheits-Härtung
+
+- **Vendored Supabase-Client:** `supabase-client.js` (Root) importiert
+  statt `https://esm.sh/@supabase/supabase-js@2` die in Teilprojekt 6
+  erzeugte, gepinnte Vendor-Datei (`vendor/supabase-js-2.110.0.mjs`).
+  Damit verschwindet die Laufzeit-Abhängigkeit von fremder
+  CDN-Infrastruktur — und weil die Datei same-origin ist, cacht der
+  Service Worker sie mit: **die PWA funktioniert damit erstmals
+  wirklich offline** (heute scheitert der Cross-Origin-Modul-Import
+  ohne Netz, und die App startet gar nicht).
+- **Content-Security-Policy (Viewer):** `index.html` bekommt eine
+  Meta-CSP analog zum Admin: `default-src 'self'; connect-src 'self'
+  https://<projekt-ref>.supabase.co; img-src 'self' data:;
+  style-src 'self'; base-uri 'none'; object-src 'none'`.
+  Voraussetzung: keine Inline-Skripte/-Styles in `index.html`
+  (wird im Zuge des Modul-Schnitts sichergestellt).
+- **Escaping-Audit (Viewer):** Durchgang aller Template-Strings in den
+  neuen View-Modulen; bekannte Lücke: `matchCard` interpoliert
+  `m.nr` unescaped (`#${m.nr}` — kommt aus `sheet_match_nr` bzw.
+  synthetischer Kennung). Regel: alles, was aus der DB oder dem
+  `localStorage`-Cache stammt, läuft durch `esc()`.
+- **Robustes Cache-Parsen:** alle `JSON.parse`-Aufrufe auf
+  `localStorage`-Werte laufen über einen gemeinsamen
+  `restore()`-Helfer in `js/state.js` mit try/catch + Fallback —
+  heute crasht z. B. ein korrupter `fb_rules`-Wert den
+  Offline-Fehlerpfad von `load()` (Parse im `catch` ohne Schutz).
+- **`sw.js`-Bereinigung:** die tote docs.google.com-Ausnahme fliegt
+  raus; Supabase-Antworten bleiben wie bisher ungecacht
+  (cross-origin, nur same-origin-GETs landen im Cache).
 
 ## Unit-Tests (neu)
 
@@ -116,20 +150,24 @@ verifiziert.
 
 ## Testing
 
-- Neue Standings-Unit-Tests (siehe oben) in `test:unit`.
+- Neue Standings-Unit-Tests (siehe oben) in `test:unit`; dazu kleine
+  Tests für den `restore()`-Helfer (korrupter/fehlender Wert →
+  Fallback statt Exception).
 - Bestehende `data-mapping`-Tests bleiben unverändert grün.
 - Kein Playwright für den Viewer (weiterhin keine
   E2E-Infrastruktur dafür; der Refactor ist durch die Unit-Tests
   verankert).
 - **Manuell:** Smoke-Test aller 4 Views mit Produktionsdaten
-  (Desktop + ~390 px), Offline-Fallback (Netz kappen → Banner +
-  Cache-Daten), SW-Update-Toast (Version hochzählen).
+  (Desktop + ~390 px), Offline-Fallback (Netz kappen → App startet
+  jetzt auch offline vollständig, Banner + Cache-Daten), SW-Update-
+  Toast (Version hochzählen), Browser-Konsole ohne CSP-Verstöße.
 
 ## Out of Scope (diese Spec)
 
 - Keine neuen Features (Live-Tab, Spieldetails, Court-Ansicht →
   Teilprojekt 8).
 - Keine Änderung an Datenladen, Polling-Intervall, Supabase-Queries
-  oder `data-mapping.js`.
+  oder `data-mapping.js` (einzige Ausnahme: der Import in
+  `supabase-client.js` wechselt auf die Vendor-Datei).
 - Kein Bundler/Build-Schritt — es bleiben native ES-Module.
 - Keine Farb-/Layout-Redesigns — die Referenz-Optik bleibt.

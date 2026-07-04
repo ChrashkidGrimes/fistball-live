@@ -30,6 +30,10 @@ CRUD-Muster (Tabelle + Formular + Fehler-Absatz) mit kopiertem Code.
    Screens rendern keine eigenen Selects mehr.
 3. Gemeinsame UI-Helfer (`admin/ui.js`) ersetzen das kopierte
    CRUD-Boilerplate der Screens.
+4. Sicherheits-Härtung: gepinnter, selbst gehosteter Supabase-Client
+   statt esm.sh-CDN, Content-Security-Policy für den Admin,
+   Escaping safe-by-default in den UI-Helfern + Escaping-Audit der
+   Screens.
 
 Kein Datenbank-/RLS-Umbau, keine funktionalen Änderungen an
 Spielplan-Generator, Schiedsrichter-Zuweisung oder Game-Report-Logik.
@@ -95,7 +99,11 @@ Spielplan-Generator, Schiedsrichter-Zuweisung oder Game-Report-Logik.
 
 - `dataTable({ columns, rows, rowActions })` → HTML-String einer Tabelle
   im `.table-wrap`; `rowActions` erzeugt Buttons mit `data-*`-Attributen,
-  Event-Bindung bleibt beim Screen.
+  Event-Bindung bleibt beim Screen. **Escaping safe-by-default:**
+  Zellwerte und Attributwerte werden von den Helfern selbst escaped;
+  wer bewusst Roh-HTML einbetten will, muss es explizit markieren
+  (z. B. `{ html: '…' }`). Gleiches Prinzip in `entityForm`
+  (Labels, Optionen, vorbefüllte Werte).
 - `formRow(label, inputHtml)` / `entityForm({ fields, submitLabel })` →
   einheitliches Formular-Markup.
 - `showToast(message, { type: 'success' | 'error' })`.
@@ -121,6 +129,34 @@ Spielplan-Generator, Schiedsrichter-Zuweisung oder Game-Report-Logik.
 - Game Report: große Touch-Ziele für die Punkte-/Satz-Buttons
   (min. 44×44 px), einspaltiges Layout auf dem Handy.
 
+### Sicherheits-Härtung
+
+- **Supabase-Client vendoren (Supply-Chain):** `admin/supabase-client.js`
+  und der Viewer-Client importieren `supabase-js` heute zur Laufzeit von
+  `https://esm.sh/@supabase/supabase-js@2` — schwimmende Version, fremde
+  Infrastruktur, voller Code-Zugriff auf die Admin-Session. Stattdessen
+  wird ein gepinnter Browser-Build der bereits als devDependency
+  vorhandenen Version ins Repo gelegt (`vendor/supabase-js-2.110.0.mjs`,
+  im Root, da Viewer und Admin ihn teilen) und lokal importiert. Ein
+  kleines Script (`scripts/vendor-supabase.mjs` o. Ä.) dokumentiert
+  reproduzierbar, wie der Build aus `node_modules` erzeugt wird.
+  In diesem Teilprojekt stellt der **Admin** auf den vendored Import um;
+  der Viewer folgt in Teilprojekt 7.
+- **Content-Security-Policy (Admin):** `admin/index.html` bekommt ein
+  `<meta http-equiv="Content-Security-Policy">` mit
+  `default-src 'self'; connect-src 'self' https://<projekt-ref>.supabase.co;
+  img-src 'self' data:; style-src 'self'; base-uri 'none';
+  object-src 'none'` (möglich, sobald kein CDN-Import mehr existiert;
+  `frame-ancestors` wirkt in Meta-CSP nicht und bleibt außen vor).
+  Voraussetzung im Umbau: keine Inline-Skripte/-Styles und keine
+  `onclick`-HTML-Attribute — Event-Bindung bleibt wie bisher in JS.
+- **Escaping-Audit (Admin):** systematischer Durchgang aller
+  `innerHTML`-Interpolationen in `admin/screens/*.js`; bekannte Lücke:
+  `sourceLabel()` in `matches.js` interpoliert `round_label` unescaped.
+  Durch den Umbau auf die safe-by-default-Helfer verschwindet der
+  Großteil der Handarbeit; verbleibende manuelle Templates escapen
+  konsequent via `escapeHtml`.
+
 ## UX-Verhalten
 
 - Beim ersten Login ohne persistierten Kontext: erstes Turnier + erste
@@ -143,8 +179,13 @@ Spielplan-Generator, Schiedsrichter-Zuweisung oder Game-Report-Logik.
   wird im Lösch-Flow bestätigt.
 - **Unit-Tests:** unverändert (Generator-Tests hängen nicht am UI).
   `ui.js`-Helfer, die reine HTML-Strings bauen (`dataTable`,
-  `entityForm`), bekommen kleine `node --test`-Tests (Escaping,
+  `entityForm`), bekommen kleine `node --test`-Tests (Escaping
+  inkl. Angriffs-Fixtures wie `<img onerror>`-Teamnamen,
   Spalten-/Feld-Rendering).
+- **CSP-Verifikation:** Die Playwright-Specs laufen gegen die Seite
+  mit aktiver Meta-CSP — Verstöße (Inline-Handler, CDN-Import)
+  brechen die Flows und fallen damit automatisch auf. Zusätzlich ein
+  manueller Blick in die Browser-Konsole auf CSP-Reports.
 - **Manuell:** Smoke-Test aller 9 Screens auf Desktop-Breite und
   ~390 px (Handy), Game Report zusätzlich auf Touch-Bedienbarkeit.
 
