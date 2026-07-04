@@ -4,7 +4,7 @@ const ADMIN_EMAIL = 'admin@fistball-ems.local';
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
 async function loginAs(page, email, password) {
-  await page.goto('/');
+  await page.goto('./');
   await page.fill('#email', email);
   await page.fill('#password', password);
   await page.click('#loginForm button[type=submit]');
@@ -80,7 +80,7 @@ test('scorer does not see a finish control on matches', async ({ page }) => {
 });
 
 test('anonymous (logged out) request can still read tournaments from Supabase', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('./');
   const result = await page.evaluate(async () => {
     const mod = await import('/supabase-client.js');
     const { data, error } = await mod.getClient().from('tournaments').select().limit(1);

@@ -4,7 +4,7 @@ const ADMIN_EMAIL = 'admin@fistball-ems.local';
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
 async function loginAs(page, email, password) {
-  await page.goto('/');
+  await page.goto('./');
   await page.fill('#email', email);
   await page.fill('#password', password);
   await page.click('#loginForm button[type=submit]');
