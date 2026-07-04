@@ -1,15 +1,8 @@
 import { getClient } from './supabase-client.js';
 
-// Shared HTML-escaping helper. All five admin/screens/*.js files render
-// DB-sourced strings (tournament/category/court/team names, round labels —
-// ultimately sourced from the public Google Sheet via scripts/migrate-sheet-data.mjs,
-// which does no sanitization) via `innerHTML` template literals. Any such
-// value MUST be passed through this function before interpolation to avoid
-// stored XSS in the privileged admin session.
-const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-export function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch]);
-}
+// escapeHtml lives in ui.js now (safe-by-default helpers). Re-exported here
+// so screens can migrate one at a time.
+export { escapeHtml } from './ui.js';
 
 export async function listTournaments() {
   const { data, error } = await getClient().from('tournaments').select().order('start_date');
