@@ -38,11 +38,12 @@ test('a KO match with a "winner of" source auto-resolves once the source match i
   await page.selectOption('#ctx_tournament', { label: 'KO Source Tournament' });
   await page.selectOption('#ctx_category', { label: 'KO Source Category' });
   await page.click('button[data-screen=matches]');
-  // No explicit wait needed here: matches.js disables the team/court/category/
-  // source selects for the duration of each tournament/category refresh chain,
-  // so Playwright's own actionability checks make the selectOption() calls below
+  // No explicit wait needed here: matches.js disables the team/court/source
+  // selects for the duration of each tournament/category refresh chain, so
+  // Playwright's own actionability checks make the selectOption() calls below
   // wait for the in-flight refresh to finish before interacting, instead of
-  // racing against it.
+  // racing against it. (The matches screen has no category select of its
+  // own — category comes from the shared context bar.)
 
   // Source match: KO Team A vs KO Team B (fixed teams).
   await page.selectOption('#match_team_a', { label: 'KO Team A' });

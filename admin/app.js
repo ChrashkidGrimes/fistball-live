@@ -1,5 +1,6 @@
 import { signIn, signOut, getSessionRole } from './supabase-client.js';
 import { initContext, onContextChange, setContextMode } from './context.js';
+import { loading } from './ui.js';
 
 const screens = new Map();
 let currentRole = null;
@@ -15,7 +16,7 @@ export async function showScreen(name) {
   currentScreen = name;
   setContextMode(screen.context);
   const main = document.getElementById('main');
-  main.innerHTML = '';
+  main.innerHTML = loading();
   await screen.render(main, { role: currentRole });
   document.querySelectorAll('#nav button').forEach((b) => {
     b.classList.toggle('is-active', b.dataset.screen === name);

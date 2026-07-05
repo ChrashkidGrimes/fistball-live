@@ -1,9 +1,5 @@
 import { getClient } from './supabase-client.js';
 
-// escapeHtml lives in ui.js now (safe-by-default helpers). Re-exported here
-// so screens can migrate one at a time.
-export { escapeHtml } from './ui.js';
-
 export async function listTournaments() {
   const { data, error } = await getClient().from('tournaments').select().order('start_date');
   if (error) throw error;

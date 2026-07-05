@@ -33,7 +33,7 @@ async function render(main, { role }) {
       <button id="sg_preview">Vorschau berechnen</button>
       <p id="sgError" class="error" hidden></p>
     </div>
-    <div class="panel">
+    <div class="panel" id="sg_preview_panel" hidden>
       <div id="sg_preview_wrap"></div>
     </div>
   `;
@@ -53,6 +53,7 @@ async function render(main, { role }) {
     errorEl.hidden = true;
     previewAssignments = null;
     document.getElementById('sg_preview_wrap').innerHTML = '';
+    document.getElementById('sg_preview_panel').hidden = true;
     try {
       const courtIds = [...document.querySelectorAll('#sg_courts input:checked')].map((el) => el.value);
       if (courtIds.length === 0) throw new Error('Mindestens ein Court auswählen.');
@@ -116,6 +117,7 @@ async function render(main, { role }) {
         ${table}
         ${blocked ? '' : `<button id="sg_commit">Anlegen</button>`}
       `;
+      document.getElementById('sg_preview_panel').hidden = false;
 
       if (!blocked) {
         document.getElementById('sg_commit').onclick = async () => {

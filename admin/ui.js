@@ -72,9 +72,16 @@ export function confirmDelete(message) {
         </div>
       </div>`;
     document.body.appendChild(wrap);
-    const done = (result) => { wrap.remove(); resolve(result); };
+    const onKeydown = (e) => { if (e.key === 'Escape') done(false); };
+    const done = (result) => {
+      document.removeEventListener('keydown', onKeydown);
+      wrap.remove();
+      resolve(result);
+    };
+    document.addEventListener('keydown', onKeydown);
     wrap.querySelector('[data-cancel]').onclick = () => done(false);
     wrap.querySelector('[data-confirm]').onclick = () => done(true);
     wrap.onclick = (e) => { if (e.target === wrap) done(false); };
+    wrap.querySelector('[data-cancel]').focus();
   });
 }
