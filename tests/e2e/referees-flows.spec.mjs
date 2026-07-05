@@ -57,9 +57,9 @@ test('admin can manually assign a referee to a match and sees a same-country war
     await expect(page.locator('table tbody')).toContainText(name);
   }
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Assign Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Referees Assign Category' });
   await page.click('button[data-screen=matches]');
-  await page.selectOption('#match_tournament', { label: 'Referees Assign Tournament' });
-  await page.selectOption('#match_category', { label: 'Referees Assign Category' });
   await page.selectOption('#match_team_a', { label: 'Switzerland' });
   await page.selectOption('#match_team_b', { label: 'Austria' });
   await page.fill('#match_round', 'Group Match 1');
@@ -167,9 +167,9 @@ test('workload overview shows the correct total after an assignment', async ({ p
     await expect(page.locator('table tbody')).toContainText(name);
   }
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Workload Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Referees Workload Category' });
   await page.click('button[data-screen=matches]');
-  await page.selectOption('#match_tournament', { label: 'Referees Workload Tournament' });
-  await page.selectOption('#match_category', { label: 'Referees Workload Category' });
   await page.selectOption('#match_team_a', { label: 'RW Team A' });
   await page.selectOption('#match_team_b', { label: 'RW Team B' });
   await page.fill('#match_round', 'RW Match');

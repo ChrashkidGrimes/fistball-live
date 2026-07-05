@@ -1,8 +1,10 @@
 import { registerScreen } from '../app.js';
 import {
-  listTournaments, listCategories, listTeams, listCourts, listMatches, listMatchSourceOptions,
-  createMatch, finishMatch, escapeHtml,
+  listTeams, listCourts, listMatches, listMatchSourceOptions,
+  createMatch, finishMatch,
 } from '../db.js';
+import { getTournamentId, getCategoryId } from '../context.js';
+import { dataTable, raw, selectOptions, showToast, emptyState, escapeHtml } from '../ui.js';
 
 function sourceLabel(sourceMatch, outcome) {
   if (!sourceMatch) return '—';
@@ -11,43 +13,45 @@ function sourceLabel(sourceMatch, outcome) {
 }
 
 async function render(main, { role }) {
-  const tournaments = await listTournaments();
-  const tOptions = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  if (!getCategoryId()) {
+    main.innerHTML = `<h2>Matches</h2>${emptyState('Wähle oben Turnier und Kategorie.')}`;
+    return;
+  }
+  const currentTournamentId = getTournamentId();
+  const currentCategoryId = getCategoryId();
+
   main.innerHTML = `
     <h2>Matches</h2>
-    <label>Turnier<select id="match_tournament">${tOptions}</select></label>
-    <label>Kategorie<select id="match_category"></select></label>
-    <div id="matchTableWrap"></div>
-    <p id="matchListError" class="error" hidden></p>
-    <form id="matchForm" class="entity-form">
-      <label>Team-A-Modus
-        <select id="match_team_a_mode">
-          <option value="fixed">Festes Team</option>
-          <option value="winner">Sieger von Match</option>
-          <option value="loser">Verlierer von Match</option>
-        </select>
-      </label>
-      <label>Team A<select id="match_team_a"></select></label>
-      <label>Team A — Quell-Match<select id="match_team_a_source"></select></label>
-      <label>Team-B-Modus
-        <select id="match_team_b_mode">
-          <option value="fixed">Festes Team</option>
-          <option value="winner">Sieger von Match</option>
-          <option value="loser">Verlierer von Match</option>
-        </select>
-      </label>
-      <label>Team B<select id="match_team_b"></select></label>
-      <label>Team B — Quell-Match<select id="match_team_b_source"></select></label>
-      <label>Court<select id="match_court"></select></label>
-      <label>Runde<input id="match_round"></label>
-      <label>Best of<input id="match_best_of" type="number" value="5"></label>
-      <button type="submit">Anlegen</button>
-      <p id="matchError" class="error" hidden></p>
-    </form>
+    <div class="panel">
+      <div id="matchTableWrap"></div>
+    </div>
+    <div class="panel">
+      <form id="matchForm" class="entity-form">
+        <label>Team-A-Modus
+          <select id="match_team_a_mode">
+            <option value="fixed">Festes Team</option>
+            <option value="winner">Sieger von Match</option>
+            <option value="loser">Verlierer von Match</option>
+          </select>
+        </label>
+        <label>Team A<select id="match_team_a"></select></label>
+        <label>Team A — Quell-Match<select id="match_team_a_source"></select></label>
+        <label>Team-B-Modus
+          <select id="match_team_b_mode">
+            <option value="fixed">Festes Team</option>
+            <option value="winner">Sieger von Match</option>
+            <option value="loser">Verlierer von Match</option>
+          </select>
+        </label>
+        <label>Team B<select id="match_team_b"></select></label>
+        <label>Team B — Quell-Match<select id="match_team_b_source"></select></label>
+        <label>Court<select id="match_court"></select></label>
+        <label>Runde<input id="match_round"></label>
+        <label>Best of<input id="match_best_of" type="number" value="5"></label>
+        <button type="submit" class="btn">Anlegen</button>
+      </form>
+    </div>
   `;
-
-  let currentTournamentId = null;
-  let currentCategoryId = null;
 
   // Selects that get their <option> lists rewritten (via .innerHTML) by the
   // tournament/category refresh chain below. Rewriting innerHTML resets the
@@ -61,7 +65,6 @@ async function render(main, { role }) {
   // Playwright's own actionability checks wait for re-enablement rather
   // than racing against it.
   const RACE_GUARDED_SELECT_IDS = [
-    'match_tournament', 'match_category',
     'match_team_a', 'match_team_a_source',
     'match_team_b', 'match_team_b_source',
     'match_court',
@@ -87,38 +90,33 @@ async function render(main, { role }) {
 
   async function renderTable() {
     const matches = currentCategoryId ? await listMatches(currentCategoryId) : [];
-    document.getElementById('matchTableWrap').innerHTML = `
-      <table>
-        <thead><tr><th>Team A</th><th>Team B</th><th>Runde</th><th>Court</th><th>Status</th><th></th></tr></thead>
-        <tbody>${matches.map((m) => `
-          <tr>
-            <td>${m.team_a ? escapeHtml(m.team_a.name) : `<em>${escapeHtml(sourceLabel(m.team_a_source_match, m.team_a_source_outcome))}</em>`}</td>
-            <td>${m.team_b ? escapeHtml(m.team_b.name) : `<em>${escapeHtml(sourceLabel(m.team_b_source_match, m.team_b_source_outcome))}</em>`}</td>
-            <td>${escapeHtml(m.round_label ?? '')}</td>
-            <td>${escapeHtml(m.court?.name ?? '')}</td>
-            <td>${escapeHtml(m.status)}</td>
-            <td>${role === 'admin' && m.status !== 'finished' && m.team_a_id && m.team_b_id
-              ? `<button data-finish="${m.id}">Finished</button>
-                 <button data-forfeit-toggle="${m.id}">Forfeit</button>
-                 <span id="forfeit-${m.id}" hidden>
-                   <button data-forfeit-winner="${m.id}|${m.team_a_id}">${escapeHtml(m.team_a.name)} gewinnt</button>
-                   <button data-forfeit-winner="${m.id}|${m.team_b_id}">${escapeHtml(m.team_b.name)} gewinnt</button>
-                 </span>`
-              : ''}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
+    document.getElementById('matchTableWrap').innerHTML = dataTable({
+      columns: [
+        { label: 'Team A', render: (m) => m.team_a ? m.team_a.name : raw(`<em>${escapeHtml(sourceLabel(m.team_a_source_match, m.team_a_source_outcome))}</em>`) },
+        { label: 'Team B', render: (m) => m.team_b ? m.team_b.name : raw(`<em>${escapeHtml(sourceLabel(m.team_b_source_match, m.team_b_source_outcome))}</em>`) },
+        { label: 'Runde', render: (m) => m.round_label ?? '' },
+        { label: 'Court', render: (m) => m.court?.name ?? '' },
+        { label: 'Status', render: (m) => m.status },
+        { label: '', render: (m) => role === 'admin' && m.status !== 'finished' && m.team_a_id && m.team_b_id
+            ? raw(`<button class="btn" data-finish="${escapeHtml(m.id)}">Finished</button>
+                   <button class="btn btn--ghost" data-forfeit-toggle="${escapeHtml(m.id)}">Forfeit</button>
+                   <span id="forfeit-${escapeHtml(m.id)}" hidden>
+                     <button class="btn btn--danger" data-forfeit-winner="${escapeHtml(m.id)}|${escapeHtml(m.team_a_id)}">${escapeHtml(m.team_a.name)} gewinnt</button>
+                     <button class="btn btn--danger" data-forfeit-winner="${escapeHtml(m.id)}|${escapeHtml(m.team_b_id)}">${escapeHtml(m.team_b.name)} gewinnt</button>
+                   </span>`)
+            : '' },
+      ],
+      rows: matches,
+      emptyText: 'Noch keine Matches in dieser Kategorie.',
+    });
 
-    const listErrorEl = document.getElementById('matchListError');
     document.querySelectorAll('[data-finish]').forEach((btn) => {
       btn.onclick = async () => {
-        listErrorEl.hidden = true;
         try {
           await finishMatch(btn.dataset.finish);
           await renderTable();
         } catch (err) {
-          listErrorEl.textContent = err.message;
-          listErrorEl.hidden = false;
+          showToast(err.message, { type: 'error' });
         }
       };
     });
@@ -131,72 +129,37 @@ async function render(main, { role }) {
     document.querySelectorAll('[data-forfeit-winner]').forEach((btn) => {
       btn.onclick = async () => {
         const [matchId, winnerId] = btn.dataset.forfeitWinner.split('|');
-        listErrorEl.hidden = true;
         try {
           await finishMatch(matchId, winnerId);
           await renderTable();
         } catch (err) {
-          listErrorEl.textContent = err.message;
-          listErrorEl.hidden = false;
+          showToast(err.message, { type: 'error' });
         }
       };
     });
   }
 
-  async function refreshCategories(tournamentId) {
-    const categories = await listCategories(tournamentId);
-    document.getElementById('match_category').innerHTML =
-      categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-    return categories;
-  }
-
   async function refreshTeamsAndCourts(tournamentId, categoryId) {
     const [teams, courts] = await Promise.all([listTeams(categoryId), listCourts(tournamentId)]);
-    document.getElementById('match_team_a').innerHTML = teams.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
-    document.getElementById('match_team_b').innerHTML = teams.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+    const teamOptions = selectOptions(teams, (t) => t.id, (t) => t.name);
+    document.getElementById('match_team_a').innerHTML = teamOptions;
+    document.getElementById('match_team_b').innerHTML = teamOptions;
     document.getElementById('match_court').innerHTML =
-      `<option value="">—</option>` + courts.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      `<option value="">—</option>` + selectOptions(courts, (c) => c.id, (c) => c.name);
   }
 
   async function refreshSourceOptions(tournamentId) {
     const options = await listMatchSourceOptions(tournamentId);
-    const html = options.map((m) => {
+    const html = selectOptions(options, (m) => m.id, (m) => {
       const label = m.sheet_match_nr ? `#${m.sheet_match_nr}` : (m.round_label || m.id);
-      return `<option value="${m.id}">${escapeHtml(label)} (${escapeHtml(m.team_a?.name ?? '?')} vs ${escapeHtml(m.team_b?.name ?? '?')})</option>`;
-    }).join('');
+      return `${label} (${m.team_a?.name ?? '?'} vs ${m.team_b?.name ?? '?'})`;
+    });
     document.getElementById('match_team_a_source').innerHTML = html;
     document.getElementById('match_team_b_source').innerHTML = html;
   }
 
-  async function selectCategory(tournamentId, categoryId) {
-    currentCategoryId = categoryId;
-    await refreshTeamsAndCourts(tournamentId, categoryId);
-    await renderTable();
-  }
-
-  document.getElementById('match_tournament').onchange = async (e) => {
-    currentTournamentId = e.target.value;
-    setRaceGuardedSelectsDisabled(true);
-    try {
-      await refreshSourceOptions(currentTournamentId);
-      const categories = await refreshCategories(currentTournamentId);
-      if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
-    } finally {
-      setRaceGuardedSelectsDisabled(false);
-    }
-  };
-  document.getElementById('match_category').onchange = async (e) => {
-    setRaceGuardedSelectsDisabled(true);
-    try {
-      await selectCategory(currentTournamentId, e.target.value);
-    } finally {
-      setRaceGuardedSelectsDisabled(false);
-    }
-  };
-
   document.getElementById('matchForm').onsubmit = async (e) => {
     e.preventDefault();
-    const errorEl = document.getElementById('matchError');
     try {
       const aMode = document.getElementById('match_team_a_mode').value;
       const bMode = document.getElementById('match_team_b_mode').value;
@@ -220,21 +183,17 @@ async function render(main, { role }) {
         setRaceGuardedSelectsDisabled(false);
       }
     } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.hidden = false;
+      showToast(err.message, { type: 'error' });
     }
   };
 
-  if (tournaments[0]) {
-    currentTournamentId = tournaments[0].id;
-    setRaceGuardedSelectsDisabled(true);
-    try {
-      await refreshSourceOptions(currentTournamentId);
-      const categories = await refreshCategories(currentTournamentId);
-      if (categories[0]) await selectCategory(currentTournamentId, categories[0].id);
-    } finally {
-      setRaceGuardedSelectsDisabled(false);
-    }
+  setRaceGuardedSelectsDisabled(true);
+  try {
+    await refreshSourceOptions(currentTournamentId);
+    await refreshTeamsAndCourts(currentTournamentId, currentCategoryId);
+    await renderTable();
+  } finally {
+    setRaceGuardedSelectsDisabled(false);
   }
 }
 

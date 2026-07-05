@@ -59,9 +59,9 @@ test('admin can create a match and mark it finished', async ({ page }) => {
   await page.click('#teamForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Playwright United');
 
+  await page.selectOption('#ctx_tournament', { label: 'Playwright Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Playwright Category' });
   await page.click('button[data-screen=matches]');
-  await page.selectOption('#match_tournament', { label: 'Playwright Test Tournament' });
-  await page.selectOption('#match_category', { label: 'Playwright Category' });
   await page.selectOption('#match_team_a', { label: 'Playwright FC' });
   await page.selectOption('#match_team_b', { label: 'Playwright United' });
   await page.click('#matchForm button[type=submit]');
@@ -129,8 +129,8 @@ test('admin can generate a round-robin group stage with courts and times', async
   await page.click('#sg_commit');
   await expect(page.locator('#sg_preview_wrap')).toContainText('Spielplan angelegt');
 
+  await page.selectOption('#ctx_tournament', { label: 'Schedule Gen Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Schedule Gen Category' });
   await page.click('button[data-screen=matches]');
-  await page.selectOption('#match_tournament', { label: 'Schedule Gen Tournament' });
-  await page.selectOption('#match_category', { label: 'Schedule Gen Category' });
   await expect(page.locator('table tbody tr')).toHaveCount(3);
 });

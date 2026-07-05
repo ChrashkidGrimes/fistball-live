@@ -35,9 +35,9 @@ test('a KO match with a "winner of" source auto-resolves once the source match i
     await expect(page.locator('table tbody')).toContainText(name);
   }
 
+  await page.selectOption('#ctx_tournament', { label: 'KO Source Tournament' });
+  await page.selectOption('#ctx_category', { label: 'KO Source Category' });
   await page.click('button[data-screen=matches]');
-  await page.selectOption('#match_tournament', { label: 'KO Source Tournament' });
-  await page.selectOption('#match_category', { label: 'KO Source Category' });
   // No explicit wait needed here: matches.js disables the team/court/category/
   // source selects for the duration of each tournament/category refresh chain,
   // so Playwright's own actionability checks make the selectOption() calls below
