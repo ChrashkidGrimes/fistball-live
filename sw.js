@@ -1,10 +1,18 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v23";
+const VERSION = "fb-live-v24";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./js/meta.js",
+  "./js/state.js",
+  "./js/standings.js",
+  "./js/pwa.js",
+  "./js/views/standings-view.js",
+  "./js/views/bracket-view.js",
+  "./js/views/matches-view.js",
+  "./js/views/cards-view.js",
   "./manifest.webmanifest",
   "./assets/ifa-mark.png",
   "./icons/favicon-64.png",
@@ -32,9 +40,6 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-
-  // Live data (Google Sheets): always go to network, never cache stale scores.
-  if (url.hostname.includes("docs.google.com")) return;
 
   // App shell: cache-first, fall back to network.
   e.respondWith(
