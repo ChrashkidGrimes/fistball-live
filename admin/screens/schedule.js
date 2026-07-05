@@ -1,9 +1,11 @@
 import { registerScreen } from '../app.js';
 import {
-  listTournaments, listCategories, listTeams, listCourts, listMatches, listMatchesForTournament,
-  createMatches, deleteMatchesByCategory, escapeHtml,
+  listTeams, listCourts, listMatches, listMatchesForTournament,
+  createMatches, deleteMatchesByCategory,
 } from '../db.js';
 import { computeRoundRobinRounds, assignScheduleSlots } from '../schedule-generator.js';
+import { getTournamentId, getCategoryId } from '../context.js';
+import { dataTable, emptyState, escapeHtml } from '../ui.js';
 
 async function render(main, { role }) {
   if (role !== 'admin') {
@@ -11,34 +13,32 @@ async function render(main, { role }) {
     return;
   }
 
-  const tournaments = await listTournaments();
-  const tOptions = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  const currentTournamentId = getTournamentId();
+  const currentCategoryId = getCategoryId();
+  if (!currentTournamentId || !currentCategoryId) {
+    main.innerHTML = `<h2>Spielplan — Gruppenphase generieren</h2>${emptyState('Wähle oben Turnier und Kategorie.')}`;
+    return;
+  }
+
   main.innerHTML = `
     <h2>Spielplan — Gruppenphase generieren</h2>
-    <label>Turnier<select id="sg_tournament">${tOptions}</select></label>
-    <label>Kategorie<select id="sg_category"></select></label>
-    <fieldset id="sg_courts"><legend>Courts</legend></fieldset>
-    <label>Start<input id="sg_start" type="datetime-local"></label>
-    <label>Ende<input id="sg_end" type="datetime-local"></label>
-    <label>Match-Dauer (Min)<input id="sg_duration" type="number" value="40" min="1"></label>
-    <label>Pause (Min)<input id="sg_break" type="number" value="5" min="0"></label>
-    <label>Rundenbezeichnung<input id="sg_round_label" value="Qualification round"></label>
-    <label>Best of<input id="sg_best_of" type="number" value="5"></label>
-    <button id="sg_preview">Vorschau berechnen</button>
-    <p id="sgError" class="error" hidden></p>
-    <div id="sg_preview_wrap"></div>
+    <div class="panel">
+      <fieldset id="sg_courts"><legend>Courts</legend></fieldset>
+      <label>Start<input id="sg_start" type="datetime-local"></label>
+      <label>Ende<input id="sg_end" type="datetime-local"></label>
+      <label>Match-Dauer (Min)<input id="sg_duration" type="number" value="40" min="1"></label>
+      <label>Pause (Min)<input id="sg_break" type="number" value="5" min="0"></label>
+      <label>Rundenbezeichnung<input id="sg_round_label" value="Qualification round"></label>
+      <label>Best of<input id="sg_best_of" type="number" value="5"></label>
+      <button id="sg_preview">Vorschau berechnen</button>
+      <p id="sgError" class="error" hidden></p>
+    </div>
+    <div class="panel">
+      <div id="sg_preview_wrap"></div>
+    </div>
   `;
 
-  let currentTournamentId = null;
-  let currentCategoryId = null;
   let previewAssignments = null;
-
-  async function refreshCategories(tournamentId) {
-    const categories = await listCategories(tournamentId);
-    document.getElementById('sg_category').innerHTML =
-      categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-    return categories;
-  }
 
   async function refreshCourts(tournamentId) {
     const courts = await listCourts(tournamentId);
@@ -46,17 +46,7 @@ async function render(main, { role }) {
       `<label><input type="checkbox" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
   }
 
-  async function selectTournament(tournamentId) {
-    currentTournamentId = tournamentId;
-    const categories = await refreshCategories(tournamentId);
-    await refreshCourts(tournamentId);
-    if (categories[0]) currentCategoryId = categories[0].id;
-  }
-
-  document.getElementById('sg_tournament').onchange = (e) => selectTournament(e.target.value);
-  document.getElementById('sg_category').onchange = (e) => { currentCategoryId = e.target.value; };
-
-  if (tournaments[0]) await selectTournament(tournaments[0].id);
+  await refreshCourts(currentTournamentId);
 
   document.getElementById('sg_preview').onclick = async () => {
     const errorEl = document.getElementById('sgError');
@@ -111,19 +101,19 @@ async function render(main, { role }) {
         ? `<p class="error">${nonScheduled.length} bestehende Matches sind bereits live/finished — Regenerierung nicht möglich.</p>`
         : '';
 
+      const table = dataTable({
+        columns: [
+          { label: 'Team A', render: (a) => teamName[a.teamA] },
+          { label: 'Team B', render: (a) => teamName[a.teamB] },
+          { label: 'Court', render: (a) => courtName[a.courtId] || '' },
+          { label: 'Zeit', render: (a) => new Date(a.scheduledTime).toLocaleString('de-CH') },
+        ],
+        rows: previewAssignments,
+      });
+
       document.getElementById('sg_preview_wrap').innerHTML = `
         ${warning}${blocked}
-        <table>
-          <thead><tr><th>Team A</th><th>Team B</th><th>Court</th><th>Zeit</th></tr></thead>
-          <tbody>${previewAssignments.map((a) => `
-            <tr>
-              <td>${escapeHtml(teamName[a.teamA])}</td>
-              <td>${escapeHtml(teamName[a.teamB])}</td>
-              <td>${escapeHtml(courtName[a.courtId] || '')}</td>
-              <td>${new Date(a.scheduledTime).toLocaleString('de-CH')}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
+        ${table}
         ${blocked ? '' : `<button id="sg_commit">Anlegen</button>`}
       `;
 

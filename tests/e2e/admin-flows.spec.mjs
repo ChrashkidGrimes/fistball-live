@@ -120,8 +120,6 @@ test('admin can generate a round-robin group stage with courts and times', async
   }
 
   await page.click('button[data-screen=schedule]');
-  await page.selectOption('#sg_tournament', { label: 'Schedule Gen Tournament' });
-  await page.selectOption('#sg_category', { label: 'Schedule Gen Category' });
   await page.fill('#sg_start', '2026-07-23T09:00');
   await page.fill('#sg_end', '2026-07-23T18:00');
   await page.click('#sg_preview');

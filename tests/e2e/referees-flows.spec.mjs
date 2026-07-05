@@ -114,8 +114,6 @@ test('admin can auto-assign referees for a category and commit the preview', asy
   }
 
   await page.click('button[data-screen=schedule]');
-  await page.selectOption('#sg_tournament', { label: 'Referees Auto Tournament' });
-  await page.selectOption('#sg_category', { label: 'Referees Auto Category' });
   await page.fill('#sg_start', '2026-07-23T09:00');
   await page.fill('#sg_end', '2026-07-23T18:00');
   await page.click('#sg_preview');
