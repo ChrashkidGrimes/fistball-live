@@ -4,7 +4,7 @@ const ADMIN_EMAIL = 'admin@fistball-ems.local';
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
 async function loginAs(page, email, password) {
-  await page.goto('/');
+  await page.goto('./');
   await page.fill('#email', email);
   await page.fill('#password', password);
   await page.click('#loginForm button[type=submit]');
@@ -21,23 +21,21 @@ test('admin can set up a tournament and add a player to the roster', async ({ pa
   await page.click('#tournamentForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Game Report Test Tournament');
 
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'Game Report Test Tournament' });
   await page.fill('#c_name', 'Game Report Category');
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#team_category', { label: 'Game Report Category' });
   await page.fill('#team_name', 'Game Report Team A');
   await page.click('#teamForm button[type=submit]');
   await page.fill('#team_name', 'Game Report Team B');
   await page.click('#teamForm button[type=submit]');
 
   await page.click('button[data-screen=players]');
-  await page.selectOption('#player_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#player_category', { label: 'Game Report Category' });
   await page.selectOption('#player_team', { label: 'Game Report Team A' });
   await page.fill('#player_family_name', 'Mustermann');
   await page.fill('#player_given_name', 'Max');
@@ -49,17 +47,17 @@ test('admin can set up a tournament and add a player to the roster', async ({ pa
 test('admin can select a match in Game Report and start it', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
 
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=matches]');
-  await page.selectOption('#match_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#match_category', { label: 'Game Report Category' });
   await page.selectOption('#match_team_a', { label: 'Game Report Team A' });
   await page.selectOption('#match_team_b', { label: 'Game Report Team B' });
   await page.click('#matchForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Game Report Team A');
 
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=game-report]');
-  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#gr_category', { label: 'Game Report Category' });
   await expect(page.locator('#gameReportHeader')).toContainText('Game Report Team A');
   await expect(page.locator('#gameReportHeader')).toContainText('scheduled');
 
@@ -69,9 +67,9 @@ test('admin can select a match in Game Report and start it', async ({ page }) =>
 
 test('scorer can record points, tag a detail, use undo, and record a timeout', async ({ page }) => {
   await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=game-report]');
-  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#gr_category', { label: 'Game Report Category' });
   await expect(page.locator('#gameReportHeader')).toContainText('live');
 
   await page.click('#pointA');
@@ -89,9 +87,9 @@ test('scorer can record points, tag a detail, use undo, and record a timeout', a
 
 test('scorer can record a card for a player', async ({ page }) => {
   await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=game-report]');
-  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#gr_category', { label: 'Game Report Category' });
 
   await page.selectOption('#card_player', { label: 'Max Mustermann (#7)' });
   await page.selectOption('#card_type', 'Y');
@@ -102,22 +100,21 @@ test('scorer can record a card for a player', async ({ page }) => {
 
 test('scorer can record a substitution', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=players]');
-  await page.selectOption('#player_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#player_category', { label: 'Game Report Category' });
   await page.selectOption('#player_team', { label: 'Game Report Team A' });
   await page.fill('#player_family_name', 'Ersatz');
   await page.fill('#player_given_name', 'Erik');
   await page.fill('#player_jersey_number', '12');
   await page.click('#playerForm button[type=submit]');
   await page.click('#logoutBtn');
-  await page.waitForURL('/');
   await page.waitForSelector('#email');
 
   await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=game-report]');
-  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#gr_category', { label: 'Game Report Category' });
 
   await page.selectOption('#sub_player_out', { label: 'Max Mustermann' });
   await page.selectOption('#sub_player_in', { label: 'Erik Ersatz' });
@@ -128,9 +125,9 @@ test('scorer can record a substitution', async ({ page }) => {
 
 test('scorer can record an extraordinary event, and the decided-match banner appears', async ({ page }) => {
   await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=game-report]');
-  await page.selectOption('#gr_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#gr_category', { label: 'Game Report Category' });
 
   await page.selectOption('#incident_type', 'other');
   await page.fill('#incident_note', 'Regenunterbrechung 5 Minuten');

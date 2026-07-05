@@ -1,63 +1,74 @@
 import { registerScreen } from '../app.js';
 import {
-  listTournaments, listCategories, listMatches, listMatchesForTournament, listReferees, createReferee, deleteReferee,
+  listCategories, listMatches, listMatchesForTournament, listReferees, createReferee, deleteReferee,
   listAssignmentsForMatch, createRefereeAssignment, deleteRefereeAssignment,
-  listAssignmentsForMatchIds, createRefereeAssignments, escapeHtml,
+  listAssignmentsForMatchIds, createRefereeAssignments,
 } from '../db.js';
 import { assignReferees } from '../referee-assignment-generator.js';
+import { getTournamentId, getCategoryId } from '../context.js';
+import { dataTable, raw, selectOptions, confirmDelete, showToast, emptyState, escapeHtml } from '../ui.js';
 
 const KNOWN_ROLES = ['1st Referee', '2nd Referee', 'Recording Clerk', 'Assistant Referee 1', 'Assistant Referee 2'];
 
-async function render(main, { role }) {
-  const tournaments = await listTournaments();
-  const tOptions = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+async function render(main) {
+  const currentTournamentId = getTournamentId();
+  if (!currentTournamentId) {
+    main.innerHTML = `<h2>Schiedsrichter</h2>${emptyState('Lege zuerst ein Turnier an.')}`;
+    return;
+  }
+
   main.innerHTML = `
     <h2>Schiedsrichter</h2>
-    <label>Turnier<select id="ref_tournament">${tOptions}</select></label>
 
-    <h3>Stammdaten</h3>
-    <div id="refTableWrap"></div>
-    <form id="refForm" class="entity-form">
-      <label>Name<input id="ref_name" required></label>
-      <label>Land<input id="ref_country" required></label>
-      <label>Verfügbar von<input id="ref_available_from" type="date"></label>
-      <label>Verfügbar bis<input id="ref_available_to" type="date"></label>
-      <button type="submit">Anlegen</button>
-      <p id="refError" class="error" hidden></p>
-    </form>
+    <div class="panel">
+      <h3>Stammdaten</h3>
+      <div id="refTableWrap"></div>
+      <form id="refForm" class="entity-form">
+        <label>Name<input id="ref_name" required></label>
+        <label>Land<input id="ref_country" required></label>
+        <label>Verfügbar von<input id="ref_available_from" type="date"></label>
+        <label>Verfügbar bis<input id="ref_available_to" type="date"></label>
+        <button type="submit" class="btn">Anlegen</button>
+        <p id="refError" class="error" hidden></p>
+      </form>
+    </div>
 
-    <h3>Zuweisung</h3>
-    <label>Kategorie<select id="assign_category"></select></label>
-    <label>Match<select id="assign_match"></select></label>
-    <div id="assignmentsWrap"></div>
-    <form id="assignForm" class="entity-form">
-      <label>Schiedsrichter<select id="assign_referee"></select></label>
-      <label>Rolle
-        <select id="assign_role_select">
-          ${KNOWN_ROLES.map((r) => `<option value="${r}">${r}</option>`).join('')}
-          <option value="other">Andere…</option>
-        </select>
-      </label>
-      <label id="assign_role_custom_label" hidden>Rolle (Freitext)<input id="assign_role_custom"></label>
-      <p id="assignConflictWarning" class="warning" hidden></p>
-      <button type="submit">Zuweisen</button>
-      <p id="assignError" class="error" hidden></p>
-    </form>
+    <div class="panel">
+      <h3>Zuweisung</h3>
+      <label>Kategorie<select id="assign_category"></select></label>
+      <label>Match<select id="assign_match"></select></label>
+      <div id="assignmentsWrap"></div>
+      <form id="assignForm" class="entity-form">
+        <label>Schiedsrichter<select id="assign_referee"></select></label>
+        <label>Rolle
+          <select id="assign_role_select">
+            ${KNOWN_ROLES.map((r) => `<option value="${r}">${r}</option>`).join('')}
+            <option value="other">Andere…</option>
+          </select>
+        </label>
+        <label id="assign_role_custom_label" hidden>Rolle (Freitext)<input id="assign_role_custom"></label>
+        <p id="assignConflictWarning" class="warning" hidden></p>
+        <button type="submit" class="btn">Zuweisen</button>
+      </form>
+    </div>
 
-    <h3>Automatische Zuteilung</h3>
-    <fieldset id="auto_categories"><legend>Kategorien</legend></fieldset>
-    <fieldset id="auto_roles"><legend>Rollen</legend>
-      ${KNOWN_ROLES.map((r) => `<label><input type="checkbox" value="${r}" checked> ${r}</label>`).join('')}
-    </fieldset>
-    <button id="auto_preview">Vorschau berechnen</button>
-    <p id="autoError" class="error" hidden></p>
-    <div id="auto_preview_wrap"></div>
+    <div class="panel">
+      <h3>Automatische Zuteilung</h3>
+      <fieldset id="auto_categories"><legend>Kategorien</legend></fieldset>
+      <fieldset id="auto_roles"><legend>Rollen</legend>
+        ${KNOWN_ROLES.map((r) => `<label><input type="checkbox" value="${r}" checked> ${r}</label>`).join('')}
+      </fieldset>
+      <button id="auto_preview" class="btn">Vorschau berechnen</button>
+      <p id="autoError" class="error" hidden></p>
+      <div id="auto_preview_wrap"></div>
+    </div>
 
-    <h3>Workload-Übersicht</h3>
-    <div id="workloadWrap"></div>
+    <div class="panel">
+      <h3>Workload-Übersicht</h3>
+      <div id="workloadWrap"></div>
+    </div>
   `;
 
-  let currentTournamentId = null;
   let currentCategoryId = null;
   let currentMatchId = null;
   let currentMatches = [];
@@ -65,85 +76,73 @@ async function render(main, { role }) {
   let autoPreviewResults = null;
 
   async function renderRefTable() {
-    const referees = currentTournamentId ? await listReferees(currentTournamentId) : [];
-    document.getElementById('refTableWrap').innerHTML = `
-      <table>
-        <thead><tr><th>Name</th><th>Land</th><th>Verfügbar</th><th></th></tr></thead>
-        <tbody>${referees.map((r) => `
-          <tr>
-            <td>${escapeHtml(r.name)}</td>
-            <td>${escapeHtml(r.country)}</td>
-            <td>${r.available_from || r.available_to ? `${escapeHtml(r.available_from ?? '…')} – ${escapeHtml(r.available_to ?? '…')}` : 'ganzes Turnier'}</td>
-            <td><button data-delete-ref="${r.id}">Löschen</button></td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
+    const referees = await listReferees(currentTournamentId);
+    document.getElementById('refTableWrap').innerHTML = dataTable({
+      columns: [
+        { label: 'Name', render: (r) => r.name },
+        { label: 'Land', render: (r) => r.country },
+        { label: 'Verfügbar', render: (r) => r.available_from || r.available_to ? `${r.available_from ?? '…'} – ${r.available_to ?? '…'}` : 'ganzes Turnier' },
+        { label: '', render: (r) => raw(`<button class="btn btn--ghost" data-delete-ref="${escapeHtml(r.id)}">Löschen</button>`) },
+      ],
+      rows: referees,
+      emptyText: 'Noch keine Schiedsrichter erfasst.',
+    });
     document.querySelectorAll('[data-delete-ref]').forEach((btn) => {
       btn.onclick = async () => {
-        const errorEl = document.getElementById('refError');
+        if (!await confirmDelete('Schiedsrichter wirklich löschen?')) return;
         try {
           await deleteReferee(btn.dataset.deleteRef);
           await renderRefTable();
         } catch (err) {
-          errorEl.textContent = `Löschen fehlgeschlagen (vermutlich noch mit Zuweisungen verknüpft): ${err.message}`;
-          errorEl.hidden = false;
+          showToast(`Löschen fehlgeschlagen (vermutlich noch mit Zuweisungen verknüpft): ${err.message}`, { type: 'error' });
         }
       };
     });
   }
 
-  async function selectTournament(tournamentId) {
-    currentTournamentId = tournamentId;
-    await renderRefTable();
-    await refreshAssignReferees();
-    const categories = await refreshAssignCategories(tournamentId);
-    if (categories[0]) await selectCategoryForAssignment(categories[0].id);
-    await refreshAutoCategories(tournamentId);
-    await renderWorkload();
-  }
-
+  // Categories/matches/referees selects are rebuilt whenever the tournament
+  // context loads; the assignment section itself works across whichever
+  // category is selected without needing a context change.
   async function refreshAssignCategories(tournamentId) {
     const categories = await listCategories(tournamentId);
-    document.getElementById('assign_category').innerHTML =
-      categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-    return categories;
+    const contextCategoryId = getCategoryId();
+    const preselected = categories.some((c) => c.id === contextCategoryId) ? contextCategoryId : categories[0]?.id ?? null;
+    document.getElementById('assign_category').innerHTML = selectOptions(categories, (c) => c.id, (c) => c.name, preselected);
+    return { categories, preselected };
   }
 
   async function refreshAssignMatches(categoryId) {
     currentMatches = await listMatches(categoryId);
     document.getElementById('assign_match').innerHTML =
-      currentMatches.map((m) => `<option value="${m.id}">${escapeHtml(m.round_label || '—')} (${escapeHtml(m.team_a?.name ?? '?')} vs ${escapeHtml(m.team_b?.name ?? '?')})</option>`).join('');
+      selectOptions(currentMatches, (m) => m.id, (m) => `${m.round_label || '—'} (${m.team_a?.name ?? '?'} vs ${m.team_b?.name ?? '?'})`);
   }
 
   async function refreshAssignReferees() {
-    currentReferees = currentTournamentId ? await listReferees(currentTournamentId) : [];
+    currentReferees = await listReferees(currentTournamentId);
     document.getElementById('assign_referee').innerHTML =
-      currentReferees.map((r) => `<option value="${r.id}">${escapeHtml(r.name)} (${escapeHtml(r.country)})</option>`).join('');
+      selectOptions(currentReferees, (r) => r.id, (r) => `${r.name} (${r.country})`);
   }
 
   async function renderAssignments() {
     const assignments = currentMatchId ? await listAssignmentsForMatch(currentMatchId) : [];
-    document.getElementById('assignmentsWrap').innerHTML = `
-      <table>
-        <thead><tr><th>Rolle</th><th>Schiedsrichter</th><th>Land</th><th></th></tr></thead>
-        <tbody>${assignments.map((a) => `
-          <tr>
-            <td>${escapeHtml(a.role)}</td>
-            <td>${escapeHtml(a.referee.name)}</td>
-            <td>${escapeHtml(a.referee.country)}</td>
-            <td><button data-delete-assignment="${a.id}">Löschen</button></td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
+    document.getElementById('assignmentsWrap').innerHTML = dataTable({
+      columns: [
+        { label: 'Rolle', render: (a) => a.role },
+        { label: 'Schiedsrichter', render: (a) => a.referee.name },
+        { label: 'Land', render: (a) => a.referee.country },
+        { label: '', render: (a) => raw(`<button class="btn btn--ghost" data-delete-assignment="${escapeHtml(a.id)}">Löschen</button>`) },
+      ],
+      rows: assignments,
+      emptyText: 'Keine Zuweisungen für dieses Match.',
+    });
     document.querySelectorAll('[data-delete-assignment]').forEach((btn) => {
       btn.onclick = async () => {
-        const errorEl = document.getElementById('assignError');
+        if (!await confirmDelete('Zuweisung wirklich löschen?')) return;
         try {
           await deleteRefereeAssignment(btn.dataset.deleteAssignment);
           await renderAssignments();
         } catch (err) {
-          errorEl.textContent = err.message;
-          errorEl.hidden = false;
+          showToast(err.message, { type: 'error' });
         }
       };
     });
@@ -154,10 +153,6 @@ async function render(main, { role }) {
   }
 
   async function renderWorkload() {
-    if (!currentTournamentId) {
-      document.getElementById('workloadWrap').innerHTML = '';
-      return;
-    }
     const [referees, matches] = await Promise.all([
       listReferees(currentTournamentId),
       listMatchesForTournament(currentTournamentId),
@@ -178,18 +173,16 @@ async function render(main, { role }) {
       }
     }
 
-    document.getElementById('workloadWrap').innerHTML = `
-      <table>
-        <thead><tr><th>Name</th><th>Land</th><th>Gesamt</th>${days.map((d) => `<th>${escapeHtml(d)}</th>`).join('')}</tr></thead>
-        <tbody>${referees.map((r) => `
-          <tr>
-            <td>${escapeHtml(r.name)}</td>
-            <td>${escapeHtml(r.country)}</td>
-            <td>${countsByReferee[r.id].total}</td>
-            ${days.map((d) => `<td>${countsByReferee[r.id].byDay[d] || 0}</td>`).join('')}
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
+    document.getElementById('workloadWrap').innerHTML = dataTable({
+      columns: [
+        { label: 'Name', render: (r) => r.name },
+        { label: 'Land', render: (r) => r.country },
+        { label: 'Gesamt', render: (r) => countsByReferee[r.id].total },
+        ...days.map((d) => ({ label: d, render: (r) => countsByReferee[r.id].byDay[d] || 0 })),
+      ],
+      rows: referees,
+      emptyText: 'Keine Schiedsrichter erfasst.',
+    });
   }
 
   async function selectCategoryForAssignment(categoryId) {
@@ -223,10 +216,8 @@ async function render(main, { role }) {
   async function refreshAutoCategories(tournamentId) {
     const categories = await listCategories(tournamentId);
     document.getElementById('auto_categories').innerHTML = '<legend>Kategorien</legend>' + categories.map((c) =>
-      `<label><input type="checkbox" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+      `<label><input type="checkbox" value="${escapeHtml(c.id)}" checked> ${escapeHtml(c.name)}</label>`).join('');
   }
-
-  document.getElementById('ref_tournament').onchange = (e) => selectTournament(e.target.value);
 
   document.getElementById('refForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -264,7 +255,6 @@ async function render(main, { role }) {
 
   document.getElementById('assignForm').onsubmit = async (e) => {
     e.preventDefault();
-    const errorEl = document.getElementById('assignError');
     try {
       const roleSelect = document.getElementById('assign_role_select').value;
       const role = roleSelect === 'other' ? document.getElementById('assign_role_custom').value.trim() : roleSelect;
@@ -276,8 +266,7 @@ async function render(main, { role }) {
       await renderAssignments();
       await renderWorkload();
     } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.hidden = false;
+      showToast(err.message, { type: 'error' });
     }
   };
 
@@ -310,24 +299,25 @@ async function render(main, { role }) {
       const results = assignReferees({ matches, referees, existingAssignments, roles });
       autoPreviewResults = results;
 
-      const matchLabel = Object.fromEntries(matches.map((m) => [m.id, `${escapeHtml(m.team_a_name ?? '?')} vs ${escapeHtml(m.team_b_name ?? '?')}`]));
+      // Left unescaped on purpose: dataTable() escapes every plain-string
+      // cell value by default, so pre-escaping here would double-escape it.
+      const matchLabel = Object.fromEntries(matches.map((m) => [m.id, `${m.team_a_name ?? '?'} vs ${m.team_b_name ?? '?'}`]));
       const refereeName = Object.fromEntries(referees.map((r) => [r.id, r.name]));
 
       const unresolvedCount = results.filter((r) => r.refereeId === null).length;
 
       document.getElementById('auto_preview_wrap').innerHTML = `
         ${unresolvedCount > 0 ? `<p class="warning">${unresolvedCount} Rolle(n) konnten nicht zugeteilt werden.</p>` : ''}
-        <table>
-          <thead><tr><th>Match</th><th>Rolle</th><th>Schiedsrichter</th></tr></thead>
-          <tbody>${results.map((r) => `
-            <tr>
-              <td>${matchLabel[r.matchId]}</td>
-              <td>${escapeHtml(r.role)}</td>
-              <td>${r.refereeId ? escapeHtml(refereeName[r.refereeId]) : '— nicht zuteilbar —'}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-        <button id="auto_commit">Anlegen</button>
+        ${dataTable({
+          columns: [
+            { label: 'Match', render: (r) => matchLabel[r.matchId] },
+            { label: 'Rolle', render: (r) => r.role },
+            { label: 'Schiedsrichter', render: (r) => r.refereeId ? refereeName[r.refereeId] : '— nicht zuteilbar —' },
+          ],
+          rows: results,
+          emptyText: 'Keine Zuteilungen berechnet.',
+        })}
+        <button id="auto_commit" class="btn">Anlegen</button>
       `;
 
       document.getElementById('auto_commit').onclick = async () => {
@@ -351,14 +341,18 @@ async function render(main, { role }) {
     }
   };
 
+  async function initData() {
+    await renderRefTable();
+    await refreshAssignReferees();
+    const { preselected } = await refreshAssignCategories(currentTournamentId);
+    if (preselected) await selectCategoryForAssignment(preselected);
+    await refreshAutoCategories(currentTournamentId);
+    await renderWorkload();
+  }
+
   // Initial data load — runs only after every handler above is attached,
   // so the forms are always interactive as soon as they appear in the DOM.
-  if (tournaments[0]) await selectTournament(tournaments[0].id);
-  await refreshAssignReferees();
-  if (currentTournamentId) {
-    const categories = await refreshAssignCategories(currentTournamentId);
-    if (categories[0]) await selectCategoryForAssignment(categories[0].id);
-  }
+  await initData();
 }
 
-registerScreen('referees', { render });
+registerScreen('referees', { render, context: 'tournament' });

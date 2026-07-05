@@ -4,7 +4,7 @@ const ADMIN_EMAIL = 'admin@fistball-ems.local';
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
 async function loginAs(page, email, password) {
-  await page.goto('/');
+  await page.goto('./');
   await page.fill('#email', email);
   await page.fill('#password', password);
   await page.click('#loginForm button[type=submit]');
@@ -20,29 +20,30 @@ test('a KO match with a "winner of" source auto-resolves once the source match i
   await page.fill('#t_end', '2026-07-26');
   await page.click('#tournamentForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'KO Source Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'KO Source Tournament' });
   await page.fill('#c_name', 'KO Source Category');
   await page.selectOption('#c_format', 'knockout');
   await page.click('#categoryForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'KO Source Tournament' });
+  await page.selectOption('#ctx_category', { label: 'KO Source Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'KO Source Tournament' });
-  await page.selectOption('#team_category', { label: 'KO Source Category' });
   for (const name of ['KO Team A', 'KO Team B', 'KO Team C']) {
     await page.fill('#team_name', name);
     await page.click('#teamForm button[type=submit]');
     await expect(page.locator('table tbody')).toContainText(name);
   }
 
+  await page.selectOption('#ctx_tournament', { label: 'KO Source Tournament' });
+  await page.selectOption('#ctx_category', { label: 'KO Source Category' });
   await page.click('button[data-screen=matches]');
-  await page.selectOption('#match_tournament', { label: 'KO Source Tournament' });
-  await page.selectOption('#match_category', { label: 'KO Source Category' });
-  // No explicit wait needed here: matches.js disables the team/court/category/
-  // source selects for the duration of each tournament/category refresh chain,
-  // so Playwright's own actionability checks make the selectOption() calls below
+  // No explicit wait needed here: matches.js disables the team/court/source
+  // selects for the duration of each tournament/category refresh chain, so
+  // Playwright's own actionability checks make the selectOption() calls below
   // wait for the in-flight refresh to finish before interacting, instead of
-  // racing against it.
+  // racing against it. (The matches screen has no category select of its
+  // own — category comes from the shared context bar.)
 
   // Source match: KO Team A vs KO Team B (fixed teams).
   await page.selectOption('#match_team_a', { label: 'KO Team A' });

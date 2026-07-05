@@ -1,39 +1,45 @@
-import { registerScreen } from '../app.js';
-import { listTournaments, createTournament, escapeHtml } from '../db.js';
+import { registerScreen, showScreen } from '../app.js';
+import { listTournaments, createTournament } from '../db.js';
+import { dataTable, showToast } from '../ui.js';
+import { refreshContext } from '../context.js';
 
 async function render(main) {
   const tournaments = await listTournaments();
   main.innerHTML = `
     <h2>Turniere</h2>
-    <table>
-      <thead><tr><th>Name</th><th>Start</th><th>Ende</th></tr></thead>
-      <tbody>${tournaments.map((t) =>
-        `<tr><td>${escapeHtml(t.name)}</td><td>${escapeHtml(t.start_date)}</td><td>${escapeHtml(t.end_date)}</td></tr>`).join('')}
-      </tbody>
-    </table>
-    <form id="tournamentForm" class="entity-form">
-      <label>Name<input id="t_name" required></label>
-      <label>Start<input id="t_start" type="date" required></label>
-      <label>Ende<input id="t_end" type="date" required></label>
-      <button type="submit">Anlegen</button>
-      <p id="tournamentError" class="error" hidden></p>
-    </form>
+    <div class="panel">
+      ${dataTable({
+        columns: [
+          { label: 'Name', render: (t) => t.name },
+          { label: 'Start', render: (t) => t.start_date },
+          { label: 'Ende', render: (t) => t.end_date },
+        ],
+        rows: tournaments,
+        emptyText: 'Noch kein Turnier angelegt.',
+      })}
+      <form id="tournamentForm" class="entity-form">
+        <label>Name<input id="t_name" required></label>
+        <label>Start<input id="t_start" type="date" required></label>
+        <label>Ende<input id="t_end" type="date" required></label>
+        <button type="submit" class="btn">Anlegen</button>
+      </form>
+    </div>
   `;
   document.getElementById('tournamentForm').onsubmit = async (e) => {
     e.preventDefault();
-    const errorEl = document.getElementById('tournamentError');
     try {
       await createTournament({
         name: document.getElementById('t_name').value.trim(),
         start_date: document.getElementById('t_start').value,
         end_date: document.getElementById('t_end').value,
       });
-      await render(main);
+      await refreshContext();
+      showToast('Turnier angelegt.');
+      await showScreen('tournaments');
     } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.hidden = false;
+      showToast(err.message, { type: 'error' });
     }
   };
 }
 
-registerScreen('tournaments', { render });
+registerScreen('tournaments', { render, context: 'none' });
