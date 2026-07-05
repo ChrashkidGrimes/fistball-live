@@ -132,3 +132,13 @@ test('admin can generate a round-robin group stage with courts and times', async
   await page.click('button[data-screen=matches]');
   await expect(page.locator('table tbody tr')).toHaveCount(3);
 });
+
+test('context selection survives screen changes', async ({ page }) => {
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Playwright Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Playwright Category' });
+  await page.click('button[data-screen=teams]');
+  await page.click('button[data-screen=matches]');
+  await expect(page.locator('#ctx_tournament option:checked')).toHaveText('Playwright Test Tournament');
+  await expect(page.locator('#ctx_category option:checked')).toHaveText('Playwright Category');
+});

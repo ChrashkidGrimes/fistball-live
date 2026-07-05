@@ -216,7 +216,7 @@ async function render(main) {
   async function refreshAutoCategories(tournamentId) {
     const categories = await listCategories(tournamentId);
     document.getElementById('auto_categories').innerHTML = '<legend>Kategorien</legend>' + categories.map((c) =>
-      `<label><input type="checkbox" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+      `<label><input type="checkbox" value="${escapeHtml(c.id)}" checked> ${escapeHtml(c.name)}</label>`).join('');
   }
 
   document.getElementById('refForm').onsubmit = async (e) => {

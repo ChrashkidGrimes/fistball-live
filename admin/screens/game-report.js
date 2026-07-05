@@ -143,7 +143,7 @@ async function renderCardsSection(match, myGeneration) {
   if (myGeneration !== renderGeneration) return;
   const players = [...playersA, ...playersB].filter((p) => p.role === 'player');
   const playerOptions = players.map((p) =>
-    `<option value="${p.id}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)} (#${p.jersey_number ?? '-'})</option>`
+    `<option value="${escapeHtml(p.id)}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)} (#${p.jersey_number ?? '-'})</option>`
   ).join('');
 
   const body = document.getElementById('gameReportBody');
@@ -193,7 +193,7 @@ async function renderSubstitutionsSection(match, setNumber, myGeneration) {
   if (myGeneration !== renderGeneration) return;
   const players = [...playersA, ...playersB].filter((p) => p.role === 'player');
   const playerOptions = players.map((p) =>
-    `<option value="${p.id}" data-team="${playersA.includes(p) ? match.team_a_id : match.team_b_id}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)}</option>`
+    `<option value="${escapeHtml(p.id)}" data-team="${escapeHtml(playersA.includes(p) ? match.team_a_id : match.team_b_id)}">${escapeHtml(p.given_name)} ${escapeHtml(p.family_name)}</option>`
   ).join('');
 
   const body = document.getElementById('gameReportBody');
@@ -299,7 +299,7 @@ async function render(main) {
     const matches = await listMatches(categoryId);
     const open = matches.filter((m) => m.status === 'scheduled' || m.status === 'live');
     document.getElementById('gr_match').innerHTML = open.map((m) =>
-      `<option value="${m.id}">${escapeHtml(m.team_a.name)} vs. ${escapeHtml(m.team_b.name)} (${escapeHtml(m.status)})</option>`
+      `<option value="${escapeHtml(m.id)}">${escapeHtml(m.team_a.name)} vs. ${escapeHtml(m.team_b.name)} (${escapeHtml(m.status)})</option>`
     ).join('');
     return open;
   }

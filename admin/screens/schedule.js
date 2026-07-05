@@ -43,7 +43,7 @@ async function render(main, { role }) {
   async function refreshCourts(tournamentId) {
     const courts = await listCourts(tournamentId);
     document.getElementById('sg_courts').innerHTML = '<legend>Courts</legend>' + courts.map((c) =>
-      `<label><input type="checkbox" value="${c.id}" checked> ${escapeHtml(c.name)}</label>`).join('');
+      `<label><input type="checkbox" value="${escapeHtml(c.id)}" checked> ${escapeHtml(c.name)}</label>`).join('');
   }
 
   await refreshCourts(currentTournamentId);
