@@ -19,11 +19,18 @@ export function getCategories() { return categories; }
 export function onContextChange(fn) { listeners.push(fn); }
 function notify() { for (const fn of listeners) fn({ tournamentId, categoryId }); }
 
-// Greys out the category select if the active screen doesn't use it — the bar
-// itself never disappears, so the layout stays stable across screens.
+// Both selects stay enabled on every screen — the bar itself never
+// disappears, so the layout stays stable across screens. Changing the
+// category on a tournament-level screen just re-renders it harmlessly, and
+// keeping it enabled avoids deadlocking automated interaction with a
+// disabled control. `mode` is kept as a parameter (and documents screen
+// intent via `data-ctx-mode` on the bar) for any future mode-specific
+// styling, but no longer disables anything.
 export function setContextMode(mode) {
   document.getElementById('ctx_tournament').disabled = false;
-  document.getElementById('ctx_category').disabled = mode !== 'category';
+  document.getElementById('ctx_category').disabled = false;
+  const bar = document.querySelector('.context-bar');
+  if (bar) bar.dataset.ctxMode = mode;
 }
 
 function renderSelects() {

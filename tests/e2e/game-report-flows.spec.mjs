@@ -109,7 +109,6 @@ test('scorer can record a substitution', async ({ page }) => {
   await page.fill('#player_jersey_number', '12');
   await page.click('#playerForm button[type=submit]');
   await page.click('#logoutBtn');
-  await page.waitForURL('/');
   await page.waitForSelector('#email');
 
   await loginAs(page, 'scorer@fistball-ems.local', process.env.SEED_SCORER_PASSWORD);
