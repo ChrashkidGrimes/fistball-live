@@ -97,6 +97,7 @@ html, body {
   padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
 }
+.panel[hidden] { display: none; }
 
 /* ---------- Tables ---------- */
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
