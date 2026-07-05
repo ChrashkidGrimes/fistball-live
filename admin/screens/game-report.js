@@ -1,11 +1,13 @@
 import { registerScreen } from '../app.js';
 import {
-  escapeHtml, listTournaments, listCategories, listMatches, getMatch, startMatch, listRefereeAssignments,
+  listMatches, getMatch, startMatch, listRefereeAssignments,
   listSets, recordPoint, undoLastPoint, recordTimeout, tagLastPoint,
   listPlayers, createPlayerEvent, listPlayerEvents,
   createSubstitution, listSubstitutions,
   createMatchIncident, listMatchIncidents,
 } from '../db.js';
+import { getCategoryId } from '../context.js';
+import { escapeHtml, emptyState } from '../ui.js';
 
 let currentMatchId = null;
 
@@ -83,19 +85,19 @@ async function renderScoringBody(match, myGeneration) {
     <div class="gr-score">
       <div>
         <span>${escapeHtml(match.team_a.name)}: <span id="gr_score_a">${current.points_a}</span></span>
-        <button id="pointA">+1 ${escapeHtml(match.team_a.name)}</button>
-        <button id="timeoutA">Timeout</button>
+        <button id="pointA" class="btn gr-point-btn">+1 ${escapeHtml(match.team_a.name)}</button>
+        <button id="timeoutA" class="btn btn--ghost">Timeout</button>
         <span>Timeouts: <span id="gr_timeouts_a">${current.timeouts_a}</span></span>
       </div>
       <div>
         <span>${escapeHtml(match.team_b.name)}: <span id="gr_score_b">${current.points_b}</span></span>
-        <button id="pointB">+1 ${escapeHtml(match.team_b.name)}</button>
-        <button id="timeoutB">Timeout</button>
+        <button id="pointB" class="btn gr-point-btn">+1 ${escapeHtml(match.team_b.name)}</button>
+        <button id="timeoutB" class="btn btn--ghost">Timeout</button>
         <span>Timeouts: <span id="gr_timeouts_b">${current.timeouts_b}</span></span>
       </div>
     </div>
-    <button id="undoBtn">Rückgängig</button>
-    <span id="gr_tag_hint">Letzter Punkt: <button id="tagAceBtn">Ass</button><button id="tagFaultBtn">Aufschlagfehler</button></span>
+    <button id="undoBtn" class="btn btn--ghost">Rückgängig</button>
+    <span id="gr_tag_hint">Letzter Punkt: <button id="tagAceBtn" class="btn btn--ghost">Ass</button><button id="tagFaultBtn" class="btn btn--ghost">Aufschlagfehler</button></span>
     <div id="gr_sets_summary">
       ${sets.map((s) => `<span>Satz ${s.set_number}: ${s.points_a}:${s.points_b}${s.winner_team_id ? ' ✓' : ''}</span>`).join(' · ')}
     </div>
@@ -279,22 +281,19 @@ async function selectMatch(matchId) {
 }
 
 async function render(main) {
-  const tournaments = await listTournaments();
-  const tOptions = tournaments.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  const categoryId = getCategoryId();
+  if (!categoryId) {
+    main.innerHTML = `<h2>Game Report</h2>${emptyState('Wähle oben Turnier und Kategorie.')}`;
+    return;
+  }
+
   main.innerHTML = `
     <h2>Game Report</h2>
-    <label>Turnier<select id="gr_tournament">${tOptions}</select></label>
-    <label>Kategorie<select id="gr_category"></select></label>
-    <label>Match<select id="gr_match"></select></label>
-    <div id="gameReportHeader"></div>
+    <div class="panel">
+      <label>Match<select id="gr_match"></select></label>
+      <div id="gameReportHeader"></div>
+    </div>
   `;
-
-  async function refreshCategories(tournamentId) {
-    const categories = await listCategories(tournamentId);
-    document.getElementById('gr_category').innerHTML =
-      categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-    return categories;
-  }
 
   async function refreshMatches(categoryId) {
     const matches = await listMatches(categoryId);
@@ -305,28 +304,12 @@ async function render(main) {
     return open;
   }
 
-  document.getElementById('gr_tournament').onchange = async (e) => {
-    const categories = await refreshCategories(e.target.value);
-    if (categories[0]) {
-      const matches = await refreshMatches(categories[0].id);
-      if (matches[0]) await selectMatch(matches[0].id);
-    }
-  };
-  document.getElementById('gr_category').onchange = async (e) => {
-    const matches = await refreshMatches(e.target.value);
-    if (matches[0]) await selectMatch(matches[0].id);
-  };
   document.getElementById('gr_match').onchange = async (e) => {
     await selectMatch(e.target.value);
   };
 
-  if (tournaments[0]) {
-    const categories = await refreshCategories(tournaments[0].id);
-    if (categories[0]) {
-      const matches = await refreshMatches(categories[0].id);
-      if (matches[0]) await selectMatch(matches[0].id);
-    }
-  }
+  const matches = await refreshMatches(categoryId);
+  if (matches[0]) await selectMatch(matches[0].id);
 }
 
 registerScreen('game-report', { render });
