@@ -28,6 +28,7 @@ html, body {
 
 /* ---------- Login ---------- */
 .login-wrap { min-height: 100dvh; display: grid; place-items: center; padding: 16px; }
+.login-wrap[hidden] { display: none; }
 .login-card {
   background: var(--bg-elev);
   border: 1px solid var(--line);

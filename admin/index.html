@@ -3,25 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://obujvbiwqspdnewetgyi.supabase.co; img-src 'self' data:; style-src 'self'; base-uri 'none'; object-src 'none'">
   <title>Fistball EMS — Admin</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="loginView">
-    <form id="loginForm">
-      <h1>Fistball EMS — Login</h1>
+  <div id="loginView" class="login-wrap">
+    <form id="loginForm" class="login-card">
+      <h1>Fistball EMS — Admin</h1>
       <label>E-Mail<input id="email" type="email" required autocomplete="username"></label>
       <label>Passwort<input id="password" type="password" required autocomplete="current-password"></label>
-      <button type="submit">Login</button>
+      <button type="submit" class="btn">Login</button>
       <p id="loginError" class="error" hidden></p>
     </form>
   </div>
   <div id="appView" hidden>
-    <header>
-      <h1>Fistball EMS — Admin</h1>
-      <span id="roleLabel"></span>
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="brand">
+          <div class="brand-logo" aria-hidden="true"><img src="../assets/ifa-mark.svg" alt=""></div>
+          <h1>Fistball EMS — Admin</h1>
+        </div>
+        <span id="roleLabel" class="role-label"></span>
+        <button id="logoutBtn" class="btn btn--ghost">Logout</button>
+      </div>
+      <div class="context-bar">
+        <label class="ctx-field">Turnier
+          <select id="ctx_tournament"></select>
+        </label>
+        <label class="ctx-field">Kategorie
+          <select id="ctx_category"></select>
+        </label>
+      </div>
+      <nav id="nav" class="admin-nav"></nav>
     </header>
-    <nav id="nav"></nav>
     <main id="main"></main>
   </div>
   <script type="module" src="app.js"></script>
