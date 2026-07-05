@@ -42,8 +42,8 @@ test('admin can manually assign a referee to a match and sees a same-country war
   await page.fill('#t_end', '2026-07-26');
   await page.click('#tournamentForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Assign Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'Referees Assign Tournament' });
   await page.fill('#c_name', 'Referees Assign Category');
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
@@ -94,14 +94,13 @@ test('admin can auto-assign referees for a category and commit the preview', asy
   await page.fill('#t_end', '2026-07-26');
   await page.click('#tournamentForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Auto Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'Referees Auto Tournament' });
   await page.fill('#c_name', 'Referees Auto Category');
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
 
   await page.click('button[data-screen=courts]');
-  await page.selectOption('#court_tournament', { label: 'Referees Auto Tournament' });
   await page.fill('#court_name', 'Referees Auto Court');
   await page.click('#courtForm button[type=submit]');
 
@@ -153,8 +152,8 @@ test('workload overview shows the correct total after an assignment', async ({ p
   await page.fill('#t_end', '2026-07-26');
   await page.click('#tournamentForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Workload Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'Referees Workload Tournament' });
   await page.fill('#c_name', 'Referees Workload Category');
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');

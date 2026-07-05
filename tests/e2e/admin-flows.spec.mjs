@@ -23,8 +23,8 @@ test('admin can create a tournament', async ({ page }) => {
 
 test('admin can create a category under a tournament', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Playwright Test Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'Playwright Test Tournament' });
   await page.fill('#c_name', 'Playwright Category');
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
@@ -33,8 +33,8 @@ test('admin can create a category under a tournament', async ({ page }) => {
 
 test('admin can create a court under a tournament', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Playwright Test Tournament' });
   await page.click('button[data-screen=courts]');
-  await page.selectOption('#court_tournament', { label: 'Playwright Test Tournament' });
   await page.fill('#court_name', 'Court 9');
   await page.click('#courtForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Court 9');
@@ -100,14 +100,13 @@ test('admin can generate a round-robin group stage with courts and times', async
   await page.click('#tournamentForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Schedule Gen Tournament');
 
+  await page.selectOption('#ctx_tournament', { label: 'Schedule Gen Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'Schedule Gen Tournament' });
   await page.fill('#c_name', 'Schedule Gen Category');
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
 
   await page.click('button[data-screen=courts]');
-  await page.selectOption('#court_tournament', { label: 'Schedule Gen Tournament' });
   await page.fill('#court_name', 'Schedule Court 1');
   await page.click('#courtForm button[type=submit]');
 

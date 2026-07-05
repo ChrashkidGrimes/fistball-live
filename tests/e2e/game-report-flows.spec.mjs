@@ -21,8 +21,8 @@ test('admin can set up a tournament and add a player to the roster', async ({ pa
   await page.click('#tournamentForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Game Report Test Tournament');
 
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'Game Report Test Tournament' });
   await page.fill('#c_name', 'Game Report Category');
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');

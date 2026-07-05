@@ -20,8 +20,8 @@ test('a KO match with a "winner of" source auto-resolves once the source match i
   await page.fill('#t_end', '2026-07-26');
   await page.click('#tournamentForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'KO Source Tournament' });
   await page.click('button[data-screen=categories]');
-  await page.selectOption('#c_tournament', { label: 'KO Source Tournament' });
   await page.fill('#c_name', 'KO Source Category');
   await page.selectOption('#c_format', 'knockout');
   await page.click('#categoryForm button[type=submit]');
