@@ -127,6 +127,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .error { color: #f87171; font-size: 13px; margin: 0; }
 .warning { color: var(--gold); font-size: 13px; margin: 0; }
 .empty { color: var(--muted); padding: 20px; text-align: center; font-size: 14px; }
+.loading-state { animation: loadpulse 1.2s ease-in-out infinite alternate; }
+@keyframes loadpulse { from { opacity: 0.45; } to { opacity: 0.9; } }
+@media (prefers-reduced-motion: reduce) { .loading-state { animation: none; } }
 
 /* ---------- Toast & modal ---------- */
 .toast {
