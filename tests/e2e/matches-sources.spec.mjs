@@ -26,9 +26,9 @@ test('a KO match with a "winner of" source auto-resolves once the source match i
   await page.selectOption('#c_format', 'knockout');
   await page.click('#categoryForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'KO Source Tournament' });
+  await page.selectOption('#ctx_category', { label: 'KO Source Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'KO Source Tournament' });
-  await page.selectOption('#team_category', { label: 'KO Source Category' });
   for (const name of ['KO Team A', 'KO Team B', 'KO Team C']) {
     await page.fill('#team_name', name);
     await page.click('#teamForm button[type=submit]');

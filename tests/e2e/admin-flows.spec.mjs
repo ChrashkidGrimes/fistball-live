@@ -42,9 +42,9 @@ test('admin can create a court under a tournament', async ({ page }) => {
 
 test('admin can create a team under a category, and delete blocked by FK is surfaced as an error', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Playwright Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Playwright Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Playwright Test Tournament' });
-  await page.selectOption('#team_category', { label: 'Playwright Category' });
   await page.fill('#team_name', 'Playwright FC');
   await page.click('#teamForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Playwright FC');
@@ -52,9 +52,9 @@ test('admin can create a team under a category, and delete blocked by FK is surf
 
 test('admin can create a match and mark it finished', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Playwright Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Playwright Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Playwright Test Tournament' });
-  await page.selectOption('#team_category', { label: 'Playwright Category' });
   await page.fill('#team_name', 'Playwright United');
   await page.click('#teamForm button[type=submit]');
   await expect(page.locator('table tbody')).toContainText('Playwright United');
@@ -110,9 +110,9 @@ test('admin can generate a round-robin group stage with courts and times', async
   await page.fill('#court_name', 'Schedule Court 1');
   await page.click('#courtForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Schedule Gen Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Schedule Gen Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Schedule Gen Tournament' });
-  await page.selectOption('#team_category', { label: 'Schedule Gen Category' });
   for (const name of ['SG Team A', 'SG Team B', 'SG Team C']) {
     await page.fill('#team_name', name);
     await page.click('#teamForm button[type=submit]');

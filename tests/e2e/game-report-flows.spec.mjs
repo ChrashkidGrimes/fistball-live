@@ -27,17 +27,15 @@ test('admin can set up a tournament and add a player to the roster', async ({ pa
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#team_category', { label: 'Game Report Category' });
   await page.fill('#team_name', 'Game Report Team A');
   await page.click('#teamForm button[type=submit]');
   await page.fill('#team_name', 'Game Report Team B');
   await page.click('#teamForm button[type=submit]');
 
   await page.click('button[data-screen=players]');
-  await page.selectOption('#player_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#player_category', { label: 'Game Report Category' });
   await page.selectOption('#player_team', { label: 'Game Report Team A' });
   await page.fill('#player_family_name', 'Mustermann');
   await page.fill('#player_given_name', 'Max');
@@ -103,8 +101,6 @@ test('scorer can record a card for a player', async ({ page }) => {
 test('scorer can record a substitution', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await page.click('button[data-screen=players]');
-  await page.selectOption('#player_tournament', { label: 'Game Report Test Tournament' });
-  await page.selectOption('#player_category', { label: 'Game Report Category' });
   await page.selectOption('#player_team', { label: 'Game Report Team A' });
   await page.fill('#player_family_name', 'Ersatz');
   await page.fill('#player_given_name', 'Erik');

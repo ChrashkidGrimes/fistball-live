@@ -48,9 +48,9 @@ test('admin can manually assign a referee to a match and sees a same-country war
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Assign Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Referees Assign Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Referees Assign Tournament' });
-  await page.selectOption('#team_category', { label: 'Referees Assign Category' });
   for (const name of ['Switzerland', 'Austria']) {
     await page.fill('#team_name', name);
     await page.click('#teamForm button[type=submit]');
@@ -104,9 +104,9 @@ test('admin can auto-assign referees for a category and commit the preview', asy
   await page.fill('#court_name', 'Referees Auto Court');
   await page.click('#courtForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Auto Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Referees Auto Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Referees Auto Tournament' });
-  await page.selectOption('#team_category', { label: 'Referees Auto Category' });
   for (const name of ['RA Team A', 'RA Team B']) {
     await page.fill('#team_name', name);
     await page.click('#teamForm button[type=submit]');
@@ -158,9 +158,9 @@ test('workload overview shows the correct total after an assignment', async ({ p
   await page.selectOption('#c_format', 'round_robin');
   await page.click('#categoryForm button[type=submit]');
 
+  await page.selectOption('#ctx_tournament', { label: 'Referees Workload Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Referees Workload Category' });
   await page.click('button[data-screen=teams]');
-  await page.selectOption('#team_tournament', { label: 'Referees Workload Tournament' });
-  await page.selectOption('#team_category', { label: 'Referees Workload Category' });
   for (const name of ['RW Team A', 'RW Team B']) {
     await page.fill('#team_name', name);
     await page.click('#teamForm button[type=submit]');
