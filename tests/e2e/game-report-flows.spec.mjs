@@ -100,6 +100,8 @@ test('scorer can record a card for a player', async ({ page }) => {
 
 test('scorer can record a substitution', async ({ page }) => {
   await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+  await page.selectOption('#ctx_tournament', { label: 'Game Report Test Tournament' });
+  await page.selectOption('#ctx_category', { label: 'Game Report Category' });
   await page.click('button[data-screen=players]');
   await page.selectOption('#player_team', { label: 'Game Report Team A' });
   await page.fill('#player_family_name', 'Ersatz');
