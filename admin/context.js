@@ -19,10 +19,10 @@ export function getCategories() { return categories; }
 export function onContextChange(fn) { listeners.push(fn); }
 function notify() { for (const fn of listeners) fn({ tournamentId, categoryId }); }
 
-// Greys out the selects the active screen doesn't use — the bar itself
-// never disappears, so the layout stays stable across screens.
+// Greys out the category select if the active screen doesn't use it — the bar
+// itself never disappears, so the layout stays stable across screens.
 export function setContextMode(mode) {
-  document.getElementById('ctx_tournament').disabled = mode === 'none';
+  document.getElementById('ctx_tournament').disabled = false;
   document.getElementById('ctx_category').disabled = mode !== 'category';
 }
 
