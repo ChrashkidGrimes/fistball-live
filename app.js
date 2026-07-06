@@ -18,6 +18,13 @@ import { initPwa } from './js/pwa.js';
 
 const $ = (id) => document.getElementById(id);
 
+const TABS = [
+  ['tabStandings', 'standings', 'standingsView'],
+  ['tabBracket', 'bracket', 'bracketView'],
+  ['tabMatches', 'matches', 'matchesView'],
+  ['tabCards', 'cards', 'cardsView'],
+];
+
 /* ---------------------- Rendering ---------------------- */
 
 function renderCategories() {
@@ -34,6 +41,7 @@ function renderCategories() {
     for (const cat of cats) {
       const b = document.createElement("button");
       b.className = `pill pill--${g}` + (cat === state.activeCategory ? " is-active" : "");
+      b.setAttribute("aria-pressed", String(cat === state.activeCategory));
       b.textContent = cat;
       b.onclick = () => { setCategory(cat); };
       pills.appendChild(b);
@@ -55,14 +63,13 @@ function setCategory(cat) {
 function setView(view) {
   state.activeView = view;
   persist("fb_view", view);
-  $("tabStandings").classList.toggle("is-active", view === "standings");
-  $("tabBracket").classList.toggle("is-active", view === "bracket");
-  $("tabMatches").classList.toggle("is-active", view === "matches");
-  $("tabCards").classList.toggle("is-active", view === "cards");
-  $("standingsView").hidden = view !== "standings";
-  $("bracketView").hidden = view !== "bracket";
-  $("matchesView").hidden = view !== "matches";
-  $("cardsView").hidden = view !== "cards";
+  for (const [tabId, name, viewId] of TABS) {
+    const active = view === name;
+    const tab = $(tabId);
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", String(active));
+    $(viewId).hidden = !active;
+  }
   renderActiveView();
 }
 

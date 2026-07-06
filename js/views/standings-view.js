@@ -70,8 +70,8 @@ function renderCrossTable(category) {
   let html = `<div class="cross-bar">
       <p class="section-title">Head-to-head · ${mode === "points" ? "points" : "sets"}</p>
       <div class="cross-toggle">
-        <button class="chip ${mode === "sets" ? "is-active" : ""}" data-mode="sets">Sets</button>
-        <button class="chip ${mode === "points" ? "is-active" : ""}" data-mode="points">Points</button>
+        <button class="chip ${mode === "sets" ? "is-active" : ""}" data-mode="sets" aria-pressed="${mode === "sets"}">Sets</button>
+        <button class="chip ${mode === "points" ? "is-active" : ""}" data-mode="points" aria-pressed="${mode === "points"}">Points</button>
       </div>
     </div>`;
 

@@ -9,7 +9,7 @@ function renderMatchFilter() {
     ["all", "All"], ["live", "Live"], ["finished", "Finished"], ["upcoming", "Upcoming"],
   ];
   host.innerHTML = filters.map(([k, label]) =>
-    `<button class="chip ${state.matchFilter === k ? "is-active" : ""}" data-f="${k}">${label}</button>`
+    `<button class="chip ${state.matchFilter === k ? "is-active" : ""}" data-f="${k}" aria-pressed="${state.matchFilter === k}">${label}</button>`
   ).join("");
   host.querySelectorAll(".chip").forEach((c) => {
     c.onclick = () => { state.matchFilter = c.dataset.f; renderMatches(); };
