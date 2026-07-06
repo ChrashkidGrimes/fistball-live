@@ -69,7 +69,7 @@ export function matchCard(m) {
       <div class="match-meta">
         <span>${esc(m.time)}</span>
         ${m.court ? `<span class="tag">Court ${esc(m.court)}</span>` : ""}
-        <span class="tag">#${m.nr}</span>
+        <span class="tag">#${esc(m.nr)}</span>
         <span class="tag">${esc(m.round)}</span>
       </div>
       <span class="status ${statusClass(m.status)}">${esc(m.status)}</span>

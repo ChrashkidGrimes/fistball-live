@@ -77,7 +77,7 @@ function renderCrossTable(category) {
 
   html += `<div class="cross-wrap"><table class="cross"><thead><tr><th class="corner"></th>`;
   for (const c of teams) {
-    html += `<th title="${esc(c)}"><span class="flag">${flagFor(c)}</span><br>${codeFor(c)}</th>`;
+    html += `<th title="${esc(c)}"><span class="flag">${flagFor(c)}</span><br>${esc(codeFor(c))}</th>`;
   }
   html += `</tr></thead><tbody>`;
 

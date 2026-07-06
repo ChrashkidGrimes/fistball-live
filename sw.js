@@ -1,5 +1,5 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v24";
+const VERSION = "fb-live-v25";
 const SHELL = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const SHELL = [
   "./js/views/bracket-view.js",
   "./js/views/matches-view.js",
   "./js/views/cards-view.js",
+  "./vendor/supabase-js-2.110.0.mjs",
   "./manifest.webmanifest",
   "./assets/ifa-mark.png",
   "./icons/favicon-64.png",
