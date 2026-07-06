@@ -49,6 +49,7 @@ test('mapMatch builds the standings-ready shape for a resolved, finished match w
     ],
   };
   const m = mapMatch(row);
+  assert.equal(m.id, 'match-uuid-1');
   assert.equal(m.nr, 16);
   assert.equal(m.court, '1');
   assert.equal(m.teamA, 'Chile');

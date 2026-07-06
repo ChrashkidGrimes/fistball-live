@@ -44,6 +44,7 @@ export function mapMatch(row) {
   }
 
   return {
+    id: row.id,
     day, time,
     nr: row.sheet_match_nr || row.id.slice(0, 8),
     court: row.court?.name || '',
