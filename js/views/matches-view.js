@@ -59,7 +59,7 @@ export function matchCard(m) {
 
   const setBadges = m.sets.length
     ? `<div class="setline"><div class="set-scores">${m.sets.map(([a, b]) =>
-        `<span class="s ${a > b ? "won" : ""}">${a}</span><span class="s dim">:</span><span class="s ${b > a ? "won" : ""}">${b}</span>`
+        `<span class="s ${a > b ? "won" : ""}">${esc(a)}</span><span class="s dim">:</span><span class="s ${b > a ? "won" : ""}">${esc(b)}</span>`
       ).join('<span class="s dim">·</span>')}</div></div>`
     : "";
 

@@ -10,7 +10,7 @@ export function persist(key, value) {
 }
 
 export function restore(key) {
-  return localStorage.getItem(key);
+  try { return localStorage.getItem(key); } catch (_) { return null; }
 }
 
 export function restoreJson(key, fallback) {

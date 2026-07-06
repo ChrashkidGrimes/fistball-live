@@ -8,7 +8,7 @@ import { fetchTournament, fetchMatches, fetchCautions } from './supabase-client.
 import {
   DEFAULT_RULES, mapMatch, mapCautions, rulesFromConfig,
 } from './data-mapping.js';
-import { state, CONFIG, persist, restore, restoreJson } from './js/state.js';
+import { state, CONFIG, persist, restoreJson } from './js/state.js';
 import { genderOf, orderIndex } from './js/meta.js';
 import { renderStandings } from './js/views/standings-view.js';
 import { renderBracket } from './js/views/bracket-view.js';
