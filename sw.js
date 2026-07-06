@@ -1,10 +1,12 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v25";
+const VERSION = "fb-live-v26";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./supabase-client.js",
+  "./data-mapping.js",
   "./js/meta.js",
   "./js/state.js",
   "./js/standings.js",
