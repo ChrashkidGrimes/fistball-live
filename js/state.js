@@ -26,7 +26,7 @@ export const state = {
   matches: [],
   categories: [],
   activeCategory: restore('fb_category') || null,
-  activeView: restore('fb_view') || 'standings',
+  activeView: restore('fb_view') || 'live',
   matchFilter: 'all',
   crossMode: restore('fb_cross') || 'sets',
   rules: null,

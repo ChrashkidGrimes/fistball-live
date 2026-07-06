@@ -51,7 +51,7 @@ export function renderMatches() {
     </div>`).join("");
 }
 
-export function matchCard(m) {
+export function matchCard(m, { showCategory = false } = {}) {
   const aWin = isFinished(m) && m.setsA > m.setsB;
   const bWin = isFinished(m) && m.setsB > m.setsA;
   const live = isLive(m);
@@ -67,6 +67,7 @@ export function matchCard(m) {
   <div class="match ${live ? "live" : ""}">
     <div class="match-top">
       <div class="match-meta">
+        ${showCategory ? `<span class="tag tag--cat">${esc(m.category)}</span>` : ""}
         <span>${esc(m.time)}</span>
         ${m.court ? `<span class="tag">Court ${esc(m.court)}</span>` : ""}
         <span class="tag">#${esc(m.nr)}</span>

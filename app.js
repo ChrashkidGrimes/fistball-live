@@ -14,11 +14,13 @@ import { renderStandings } from './js/views/standings-view.js';
 import { renderBracket } from './js/views/bracket-view.js';
 import { renderMatches } from './js/views/matches-view.js';
 import { renderCards } from './js/views/cards-view.js';
+import { renderLive } from './js/views/live-view.js';
 import { initPwa } from './js/pwa.js';
 
 const $ = (id) => document.getElementById(id);
 
 const TABS = [
+  ['tabLive', 'live', 'liveView'],
   ['tabStandings', 'standings', 'standingsView'],
   ['tabBracket', 'bracket', 'bracketView'],
   ['tabMatches', 'matches', 'matchesView'],
@@ -71,10 +73,12 @@ function setView(view) {
     tab.setAttribute("aria-selected", String(active));
     $(viewId).hidden = !active;
   }
+  document.querySelector(".category-bar").hidden = view === "live";
   renderActiveView();
 }
 
 function renderActiveView() {
+  if (state.activeView === "live") return renderLive();     // cross-category
   if (state.activeView === "cards") return renderCards();   // tournament-wide
   if (!state.activeCategory) return;
   if (state.activeView === "standings") renderStandings();
@@ -170,6 +174,7 @@ initPwa();
 updateHeaderHeight();
 window.addEventListener('resize', updateHeaderHeight, { passive: true });
 
+$("tabLive").onclick = () => setView("live");
 $("tabStandings").onclick = () => setView("standings");
 $("tabBracket").onclick = () => setView("bracket");
 $("tabMatches").onclick = () => setView("matches");

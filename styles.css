@@ -657,3 +657,6 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
   .brand-text h1 { font-size: 19px; }
   .event-name { font-size: 13px; }
 }
+
+/* Live tab: category tag on cross-category match cards */
+.tag--cat { color: var(--accent); background: rgba(79, 140, 255, 0.12); }
