@@ -13,6 +13,15 @@ export function restore(key) {
   return localStorage.getItem(key);
 }
 
+export function restoreJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch (_) {
+    return fallback;
+  }
+}
+
 export const state = {
   matches: [],
   categories: [],

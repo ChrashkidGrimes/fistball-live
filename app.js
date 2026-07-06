@@ -8,7 +8,7 @@ import { fetchTournament, fetchMatches, fetchCautions } from './supabase-client.
 import {
   DEFAULT_RULES, mapMatch, mapCautions, rulesFromConfig,
 } from './data-mapping.js';
-import { state, CONFIG, persist, restore } from './js/state.js';
+import { state, CONFIG, persist, restore, restoreJson } from './js/state.js';
 import { genderOf, orderIndex } from './js/meta.js';
 import { renderStandings } from './js/views/standings-view.js';
 import { renderBracket } from './js/views/bracket-view.js';
@@ -95,8 +95,7 @@ async function load(showSpin) {
       state.cautions = mapCautions(cauR.value);
       persist("fb_cautions", state.cautions);
     } else if (!state.cautions.length) {
-      const cachedCau = restore("fb_cautions");
-      if (cachedCau) state.cautions = JSON.parse(cachedCau);
+      state.cautions = restoreJson('fb_cautions', []);
     }
 
     applyData(matches);
@@ -105,11 +104,10 @@ async function load(showSpin) {
   } catch (err) {
     console.warn("Live fetch failed:", err);
     if (!state.rules) {
-      const cachedRules = restore("fb_rules");
-      state.rules = cachedRules ? JSON.parse(cachedRules) : DEFAULT_RULES;
+      state.rules = restoreJson('fb_rules', DEFAULT_RULES);
     }
-    const cached = restore("fb_cache");
-    if (cached && !state.matches.length) applyData(JSON.parse(cached));
+    const cached = restoreJson('fb_cache', null);
+    if (cached && !state.matches.length) applyData(cached);
     showBanner("Couldn't reach the live data — showing the last data loaded. Pull to refresh when back online.");
   } finally {
     btn.classList.remove("spin");
@@ -163,8 +161,8 @@ $("refreshBtn").onclick = () => load(true);
 setView(state.activeView);
 
 // initial cache paint for instant load, then network
-const boot = restore("fb_cache");
-if (boot) try { applyData(JSON.parse(boot)); } catch (_) {}
+const boot = restoreJson('fb_cache', null);
+if (boot) applyData(boot);
 load(true);
 setInterval(() => { if (!document.hidden) load(false); }, CONFIG.refreshMs);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(false); });
