@@ -1,10 +1,21 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v23";
+const VERSION = "fb-live-v27";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./supabase-client.js",
+  "./data-mapping.js",
+  "./js/meta.js",
+  "./js/state.js",
+  "./js/standings.js",
+  "./js/pwa.js",
+  "./js/views/standings-view.js",
+  "./js/views/bracket-view.js",
+  "./js/views/matches-view.js",
+  "./js/views/cards-view.js",
+  "./vendor/supabase-js-2.110.0.mjs",
   "./manifest.webmanifest",
   "./assets/ifa-mark.png",
   "./icons/favicon-64.png",
@@ -33,9 +44,6 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // Live data (Google Sheets): always go to network, never cache stale scores.
-  if (url.hostname.includes("docs.google.com")) return;
-
   // App shell: cache-first, fall back to network.
   e.respondWith(
     caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
@@ -44,6 +52,6 @@ self.addEventListener("fetch", (e) => {
         caches.open(VERSION).then((c) => c.put(e.request, copy));
       }
       return res;
-    }).catch(() => caches.match("./index.html")))
+    }).catch(() => (e.request.mode === "navigate" ? caches.match("./index.html") : Response.error())))
   );
 });

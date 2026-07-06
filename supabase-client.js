@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from './vendor/supabase-js-2.110.0.mjs';
 
 // Public, read-only anon key — safe to commit, same as admin/config.js's
 // production values. No login, no session: the public viewer only ever
