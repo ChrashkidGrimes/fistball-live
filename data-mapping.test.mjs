@@ -107,17 +107,17 @@ test('mapMatch falls back to a shortened id when sheet_match_nr is missing', () 
 test('mapCautions aggregates multiple events for the same player and keeps players separate', () => {
   const rows = [
     {
-      event_type: 'Y', player_id: 'p1',
+      event_type: 'Y', player_id: 'p1', match_id: 'match-1',
       player: { family_name: 'Muster', given_name: 'Max', jersey_number: 7, team: { name: 'Switzerland', category: { name: 'U18 M Gold' } } },
       match: { round_label: 'Qualification round' },
     },
     {
-      event_type: 'YR', player_id: 'p1',
+      event_type: 'YR', player_id: 'p1', match_id: 'match-2',
       player: { family_name: 'Muster', given_name: 'Max', jersey_number: 7, team: { name: 'Switzerland', category: { name: 'U18 M Gold' } } },
       match: { round_label: 'Semi-final 1' },
     },
     {
-      event_type: 'R', player_id: 'p2',
+      event_type: 'R', player_id: 'p2', match_id: 'match-3',
       player: { family_name: 'Anders', given_name: 'Anna', jersey_number: 3, team: { name: 'Austria', category: { name: 'U18 W Gold' } } },
       match: { round_label: null },
     },
@@ -133,6 +133,7 @@ test('mapCautions aggregates multiple events for the same player and keeps playe
   assert.equal(p1.yr, 1);
   assert.equal(p1.r, 0);
   assert.equal(p1.events.length, 2);
+  assert.equal(p1.events[0].matchId, 'match-1');
   const p2 = result.find((p) => p.name === 'Anders');
   assert.equal(p2.r, 1);
   assert.equal(p2.events[0].game, '');

@@ -42,7 +42,7 @@ export async function fetchCautions(matchIds) {
   const { data, error } = await client
     .from('player_events')
     .select(`
-      event_type, player_id,
+      event_type, player_id, match_id,
       player:player_id(family_name, given_name, jersey_number, team:team_id(name, category:category_id(name))),
       match:match_id(round_label)
     `)
