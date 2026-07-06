@@ -49,6 +49,7 @@ function renderCategories() {
     row.appendChild(pills);
     wrap.appendChild(row);
   }
+  wrap.querySelector('.pill.is-active')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
 }
 
 /* ---------------------- View switching ---------------------- */
@@ -158,7 +159,16 @@ function showBanner(msg) {
 
 /* ---------------------- Boot ---------------------- */
 
+function updateHeaderHeight() {
+  const header = document.querySelector('.app-header');
+  if (!header) return;
+  document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`);
+}
+
 initPwa();
+
+updateHeaderHeight();
+window.addEventListener('resize', updateHeaderHeight, { passive: true });
 
 $("tabStandings").onclick = () => setView("standings");
 $("tabBracket").onclick = () => setView("bracket");

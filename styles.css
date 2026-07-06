@@ -130,11 +130,14 @@ body {
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .cat-row-pills::-webkit-scrollbar { display: none; }
 .pill {
   flex: none;
+  scroll-snap-align: start;
   background: var(--bg-elev);
   color: var(--muted);
   border: 1px solid var(--line);
@@ -161,6 +164,9 @@ body {
 .content { max-width: 980px; margin: 0 auto; padding: 16px; }
 
 .view-tabs {
+  position: sticky;
+  top: var(--header-h, 64px);
+  z-index: 15;
   display: flex;
   gap: 6px;
   background: var(--bg-elev);
@@ -181,6 +187,10 @@ body {
   cursor: pointer;
 }
 .view-tab.is-active { background: var(--bg-elev-2); color: var(--text); }
+
+/* View fade-in on switch */
+.view { animation: viewfade 0.12s ease-out; }
+@keyframes viewfade { from { opacity: 0; } to { opacity: 1; } }
 
 .banner {
   background: rgba(245, 196, 81, 0.12);
@@ -368,6 +378,7 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
   .live-dot { animation: none; }
+  .view { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
 .loading[hidden] { display: none; }
