@@ -44,7 +44,12 @@ export function renderMatches() {
     groups[idx.get(key)].items.push(m);
   }
 
-  host.innerHTML = groups.map((g) => `
+  const liveNow = list.filter(isLive);
+  const liveHtml = liveNow.length
+    ? `<div class="day-group"><div class="day-head">● Live</div>${liveNow.map((m) => matchCard(m)).join('')}</div>`
+    : '';
+
+  host.innerHTML = liveHtml + groups.map((g) => `
     <div class="day-group">
       <div class="day-head">${esc(g.day)}</div>
       ${g.items.map(matchCard).join("")}

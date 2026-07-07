@@ -11,7 +11,8 @@ import {
   DEFAULT_RULES, mapMatch, mapCautions, rulesFromConfig,
 } from './data-mapping.js';
 import { state, CONFIG, persist, restoreJson } from './js/state.js';
-import { genderOf, orderIndex } from './js/meta.js';
+import { genderOf, orderIndex, isLive } from './js/meta.js';
+import { changedMatchIds } from './js/live-select.js';
 import { renderStandings } from './js/views/standings-view.js';
 import { renderBracket } from './js/views/bracket-view.js';
 import { renderMatches } from './js/views/matches-view.js';
@@ -142,7 +143,9 @@ async function load(showSpin) {
 
 function applyData(matches) {
   if (!matches.length) return;
+  const changed = changedMatchIds(state.matches, matches);
   state.matches = matches;
+  $("tabLiveDot").hidden = !state.matches.some(isLive);
 
   // Distinct categories in fetch order (already sorted by scheduled_time).
   const seen = new Set();
@@ -164,6 +167,17 @@ function applyData(matches) {
   renderCategories();
   renderActiveView();
   refreshMatchDetail();
+  pulseChanged(changed);
+}
+
+function pulseChanged(ids) {
+  if (!ids.size) return;
+  for (const id of ids) {
+    document.querySelectorAll(`[data-match-id="${CSS.escape(String(id))}"]`).forEach((el) => {
+      el.classList.add('scored');
+      setTimeout(() => el.classList.remove('scored'), 1300);
+    });
+  }
 }
 
 function cacheData(matches) {

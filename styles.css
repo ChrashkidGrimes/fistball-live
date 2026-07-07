@@ -79,6 +79,12 @@ body {
   70% { box-shadow: 0 0 0 8px rgba(255, 77, 109, 0); }
   100% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0); }
 }
+.tab-live-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--live); margin-left: 6px; vertical-align: middle;
+  animation: pulse 2s infinite;
+}
+@media (prefers-reduced-motion: reduce) { .tab-live-dot { animation: none; } }
 .icon-btn {
   background: var(--bg-elev-2);
   color: var(--text);
@@ -299,6 +305,11 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
   box-shadow: var(--shadow);
 }
 .match.live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live), var(--shadow); }
+.match.scored { animation: scorepulse 1.2s ease-out; }
+@keyframes scorepulse {
+  0% { border-color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent-2); }
+  100% { border-color: var(--line); box-shadow: none; }
+}
 .match-top {
   display: flex;
   justify-content: space-between;
@@ -378,6 +389,7 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
   .live-dot { animation: none; }
+  .match.scored { animation: none; }
   .view { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
