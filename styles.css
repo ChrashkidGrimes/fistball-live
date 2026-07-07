@@ -84,6 +84,7 @@ body {
   background: var(--live); margin-left: 6px; vertical-align: middle;
   animation: pulse 2s infinite;
 }
+.tab-live-dot[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .tab-live-dot { animation: none; } }
 .icon-btn {
   background: var(--bg-elev-2);

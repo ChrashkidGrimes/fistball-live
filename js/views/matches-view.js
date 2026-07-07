@@ -45,7 +45,7 @@ export function renderMatches() {
   }
 
   const liveNow = list.filter(isLive);
-  const liveHtml = liveNow.length
+  const liveHtml = (state.matchFilter !== 'live' && liveNow.length)
     ? `<div class="day-group"><div class="day-head">● Live</div>${liveNow.map((m) => matchCard(m)).join('')}</div>`
     : '';
 
