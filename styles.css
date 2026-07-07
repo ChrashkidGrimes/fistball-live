@@ -308,8 +308,8 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
 .match.live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live), var(--shadow); }
 .match.scored { animation: scorepulse 1.2s ease-out; }
 @keyframes scorepulse {
-  0% { border-color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent-2); }
-  100% { border-color: var(--line); box-shadow: none; }
+  0% { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+  100% { outline: 2px solid transparent; outline-offset: 2px; }
 }
 .match-top {
   display: flex;
