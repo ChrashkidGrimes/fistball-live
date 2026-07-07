@@ -7,8 +7,9 @@ export async function listTournaments() {
 }
 
 export async function createTournament({ name, start_date, end_date }) {
-  const { error } = await getClient().from('tournaments').insert({ name, start_date, end_date });
+  const { data, error } = await getClient().from('tournaments').insert({ name, start_date, end_date }).select().single();
   if (error) throw error;
+  return data;
 }
 
 export async function updateTournament(id, { name, start_date, end_date }) {

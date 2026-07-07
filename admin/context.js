@@ -59,6 +59,16 @@ export async function refreshContext() {
   await loadCategories();
 }
 
+// Programmatically switch the active tournament (e.g. right after creating
+// one), mirroring what the #ctx_tournament onchange handler does.
+export async function selectTournament(id) {
+  tournamentId = id;
+  localStorage.setItem(KEY_T, tournamentId);
+  localStorage.removeItem(KEY_C); // category belongs to the old tournament
+  await loadCategories();
+  notify();
+}
+
 export async function initContext() {
   tournaments = await listTournaments();
   const stored = localStorage.getItem(KEY_T);
