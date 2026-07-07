@@ -1,5 +1,5 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v28";
+const VERSION = "fb-live-v29";
 const SHELL = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const SHELL = [
   "./js/standings.js",
   "./js/pwa.js",
   "./js/live-select.js",
+  "./js/match-detail.js",
   "./js/views/standings-view.js",
   "./js/views/bracket-view.js",
   "./js/views/matches-view.js",

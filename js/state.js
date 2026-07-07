@@ -31,6 +31,7 @@ export const state = {
   crossMode: restore('fb_cross') || 'sets',
   rules: null,
   cautions: [],
+  referees: new Map(),   // matchId -> [{match_id, role, referee: {name}}]
   lastUpdated: null,
 };
 

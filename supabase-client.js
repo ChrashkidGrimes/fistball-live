@@ -37,6 +37,16 @@ export async function fetchMatches(tournamentId) {
   return data;
 }
 
+export async function fetchRefereeAssignments(matchIds) {
+  if (!matchIds.length) return [];
+  const { data, error } = await client
+    .from('referee_assignments')
+    .select('match_id, role, referee:referee_id(name)')
+    .in('match_id', matchIds);
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchCautions(matchIds) {
   if (matchIds.length === 0) return [];
   const { data, error } = await client

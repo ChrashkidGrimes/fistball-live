@@ -64,7 +64,7 @@ export function matchCard(m, { showCategory = false } = {}) {
     : "";
 
   return `
-  <div class="match ${live ? "live" : ""}">
+  <div class="match ${live ? "live" : ""}" data-match-id="${esc(m.id)}" role="button" tabindex="0">
     <div class="match-top">
       <div class="match-meta">
         ${showCategory ? `<span class="tag tag--cat">${esc(m.category)}</span>` : ""}

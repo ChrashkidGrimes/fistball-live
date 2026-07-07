@@ -660,3 +660,38 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 
 /* Live tab: category tag on cross-category match cards */
 .tag--cat { color: var(--accent); background: rgba(79, 140, 255, 0.12); }
+
+/* Match-detail sheet */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(4, 8, 16, 0.65);
+  display: grid; place-items: end center;
+}
+.sheet-backdrop[hidden] { display: none; }
+.sheet {
+  position: relative;
+  background: var(--bg-elev); border: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+  width: min(560px, 100%);
+  max-height: 85dvh; overflow-y: auto;
+  padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: sheetup 0.18s ease-out;
+}
+@keyframes sheetup { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+@media (min-width: 700px) {
+  .sheet-backdrop { place-items: center; }
+  .sheet { border-radius: var(--radius); }
+}
+.sheet-close { position: absolute; top: 10px; right: 10px; }
+.sheet-meta { color: var(--muted); font-size: 13px; margin: 4px 0; }
+.sheet-teams { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.sheet-team { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; }
+.sheet-sets { margin-left: auto; font-size: 24px; font-weight: 800; color: var(--muted); }
+.sheet-sets.win { color: var(--accent-2); }
+.sheet-set-table { width: auto; }
+.sheet-set-table td { padding: 3px 12px 3px 0; border: none; }
+.sheet-set-table td.won { color: var(--accent-2); font-weight: 700; }
+.sheet-card-row { font-size: 14px; padding: 3px 0; }
+.match[data-match-id] { cursor: pointer; }

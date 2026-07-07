@@ -4,7 +4,9 @@
    client-side.
    ============================================================ */
 
-import { fetchTournament, fetchMatches, fetchCautions } from './supabase-client.js';
+import {
+  fetchTournament, fetchMatches, fetchCautions, fetchRefereeAssignments,
+} from './supabase-client.js';
 import {
   DEFAULT_RULES, mapMatch, mapCautions, rulesFromConfig,
 } from './data-mapping.js';
@@ -16,6 +18,7 @@ import { renderMatches } from './js/views/matches-view.js';
 import { renderCards } from './js/views/cards-view.js';
 import { renderLive } from './js/views/live-view.js';
 import { initPwa } from './js/pwa.js';
+import { initMatchDetail, refreshMatchDetail } from './js/match-detail.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -100,14 +103,25 @@ async function load(showSpin) {
     state.rules = rulesFromConfig(tournament.config);
     persist("fb_rules", state.rules);
 
-    // Cautions are optional — a failure here must not block the main
-    // standings/matches display.
-    const [cauR] = await Promise.allSettled([fetchCautions(matchIds)]);
+    // Cautions and referee assignments are optional — a failure here must
+    // not block the main standings/matches display.
+    const [cauR, refR] = await Promise.allSettled([
+      fetchCautions(matchIds),
+      fetchRefereeAssignments(matchIds),
+    ]);
     if (cauR.status === "fulfilled") {
       state.cautions = mapCautions(cauR.value);
       persist("fb_cautions", state.cautions);
     } else if (!state.cautions.length) {
       state.cautions = restoreJson('fb_cautions', []);
+    }
+    if (refR.status === "fulfilled") {
+      const referees = new Map();
+      for (const a of refR.value) {
+        if (!referees.has(a.match_id)) referees.set(a.match_id, []);
+        referees.get(a.match_id).push(a);
+      }
+      state.referees = referees;
     }
 
     applyData(matches);
@@ -149,6 +163,7 @@ function applyData(matches) {
 
   renderCategories();
   renderActiveView();
+  refreshMatchDetail();
 }
 
 function cacheData(matches) {
@@ -170,6 +185,7 @@ function updateHeaderHeight() {
 }
 
 initPwa();
+initMatchDetail();
 
 updateHeaderHeight();
 window.addEventListener('resize', updateHeaderHeight, { passive: true });
