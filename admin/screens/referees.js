@@ -29,7 +29,6 @@ async function render(main) {
         <label>Verfügbar von<input id="ref_available_from" type="date"></label>
         <label>Verfügbar bis<input id="ref_available_to" type="date"></label>
         <button type="submit" class="btn">Anlegen</button>
-        <p id="refError" class="error" hidden></p>
       </form>
     </div>
 
@@ -59,7 +58,6 @@ async function render(main) {
         ${KNOWN_ROLES.map((r) => `<label><input type="checkbox" value="${r}" checked> ${r}</label>`).join('')}
       </fieldset>
       <button id="auto_preview" class="btn">Vorschau berechnen</button>
-      <p id="autoError" class="error" hidden></p>
       <div id="auto_preview_wrap"></div>
     </div>
 
@@ -221,7 +219,6 @@ async function render(main) {
 
   document.getElementById('refForm').onsubmit = async (e) => {
     e.preventDefault();
-    const errorEl = document.getElementById('refError');
     try {
       await createReferee({
         tournament_id: currentTournamentId,
@@ -236,8 +233,7 @@ async function render(main) {
       await refreshAssignReferees();
       await renderWorkload();
     } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.hidden = false;
+      showToast(err.message, { type: 'error' });
     }
   };
 
@@ -271,8 +267,6 @@ async function render(main) {
   };
 
   document.getElementById('auto_preview').onclick = async () => {
-    const errorEl = document.getElementById('autoError');
-    errorEl.hidden = true;
     autoPreviewResults = null;
     document.getElementById('auto_preview_wrap').innerHTML = '';
     try {
@@ -331,13 +325,11 @@ async function render(main) {
           await renderAssignments();
           await renderWorkload();
         } catch (err) {
-          errorEl.textContent = err.message;
-          errorEl.hidden = false;
+          showToast(err.message, { type: 'error' });
         }
       };
     } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.hidden = false;
+      showToast(err.message, { type: 'error' });
     }
   };
 
