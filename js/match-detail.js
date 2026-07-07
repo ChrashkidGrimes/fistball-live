@@ -10,8 +10,8 @@ function sheetHtml(m) {
   const setRows = m.sets.map(([a, b], i) => `
     <tr>
       <td class="dim">Set ${i + 1}</td>
-      <td class="${a > b ? 'won' : ''}">${a}</td>
-      <td class="${b > a ? 'won' : ''}">${b}</td>
+      <td class="${a > b ? 'won' : ''}">${esc(a)}</td>
+      <td class="${b > a ? 'won' : ''}">${esc(b)}</td>
     </tr>`).join('');
 
   const cards = (state.cautions || [])
@@ -19,7 +19,7 @@ function sheetHtml(m) {
       .filter((e) => e.matchId === m.id)
       .map((e) => ({ name: ((p.first ? p.first + ' ' : '') + p.name).trim(), team: p.teamName, type: e.type })));
   const cardRows = cards.map((c) =>
-    `<div class="sheet-card-row"><span class="badge ${c.type.toLowerCase()}">${esc(c.type)}</span> ${esc(c.name)} <span class="dim">· ${esc(c.team)}</span></div>`).join('');
+    `<div class="sheet-card-row"><span class="badge ${esc(c.type.toLowerCase())}">${esc(c.type)}</span> ${esc(c.name)} <span class="dim">· ${esc(c.team)}</span></div>`).join('');
 
   const refs = state.referees?.get?.(m.id) || [];
   const refLine = refs.length
@@ -31,9 +31,9 @@ function sheetHtml(m) {
       <span class="status ${statusClass(m.status)}">${esc(m.status)}</span></p>
     <div class="sheet-teams">
       <div class="sheet-team"><span class="flag">${flagFor(m.teamA)}</span> ${esc(m.teamA)}
-        <span class="sheet-sets ${isFinished(m) && m.setsA > m.setsB ? 'win' : ''}">${m.setsA}</span></div>
+        <span class="sheet-sets ${isFinished(m) && m.setsA > m.setsB ? 'win' : ''}">${esc(m.setsA)}</span></div>
       <div class="sheet-team"><span class="flag">${flagFor(m.teamB)}</span> ${esc(m.teamB)}
-        <span class="sheet-sets ${isFinished(m) && m.setsB > m.setsA ? 'win' : ''}">${m.setsB}</span></div>
+        <span class="sheet-sets ${isFinished(m) && m.setsB > m.setsA ? 'win' : ''}">${esc(m.setsB)}</span></div>
     </div>
     ${m.sets.length ? `<table class="sheet-set-table"><tbody>${setRows}</tbody></table>` : ''}
     <p class="sheet-meta">${esc(m.day || '')} ${esc(m.time || '')}${m.court ? ` · Court ${esc(m.court)}` : ''}</p>
