@@ -1,7 +1,7 @@
 import { registerScreen, showScreen } from '../app.js';
 import { listTournaments, createTournament } from '../db.js';
 import { dataTable, showToast } from '../ui.js';
-import { refreshContext } from '../context.js';
+import { refreshContext, selectTournament } from '../context.js';
 
 async function render(main) {
   const tournaments = await listTournaments();
@@ -28,12 +28,13 @@ async function render(main) {
   document.getElementById('tournamentForm').onsubmit = async (e) => {
     e.preventDefault();
     try {
-      await createTournament({
+      const row = await createTournament({
         name: document.getElementById('t_name').value.trim(),
         start_date: document.getElementById('t_start').value,
         end_date: document.getElementById('t_end').value,
       });
       await refreshContext();
+      await selectTournament(row.id);
       showToast('Turnier angelegt.');
       await showScreen('tournaments');
     } catch (err) {
