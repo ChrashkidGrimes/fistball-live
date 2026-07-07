@@ -55,10 +55,17 @@ function open(matchId, trigger) {
 
 export function closeMatchDetail() {
   if (openMatchId === null) return;
+  const closedMatchId = openMatchId;
   openMatchId = null;
   $('matchSheet').hidden = true;
   document.body.style.overflow = '';
-  lastTrigger?.focus?.();
+  if (lastTrigger && document.contains(lastTrigger)) {
+    lastTrigger.focus();
+  } else {
+    // The poll re-render may have replaced the card DOM node while the
+    // sheet was open; fall back to the (new) card for the same match.
+    document.querySelector(`[data-match-id="${CSS.escape(closedMatchId)}"]`)?.focus?.();
+  }
   lastTrigger = null;
 }
 
@@ -82,4 +89,20 @@ export function initMatchDetail() {
   $('sheetClose').onclick = closeMatchDetail;
   $('matchSheet').onclick = (e) => { if (e.target === $('matchSheet')) closeMatchDetail(); };
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMatchDetail(); });
+
+  // Minimal focus trap: keep Tab/Shift+Tab cycling inside the open sheet.
+  $('matchSheet').addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const focusables = [...$('matchSheet').querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')];
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
 }
