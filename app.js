@@ -4,21 +4,27 @@
    client-side.
    ============================================================ */
 
-import { fetchTournament, fetchMatches, fetchCautions } from './supabase-client.js';
+import {
+  fetchTournament, fetchMatches, fetchCautions, fetchRefereeAssignments,
+} from './supabase-client.js';
 import {
   DEFAULT_RULES, mapMatch, mapCautions, rulesFromConfig,
 } from './data-mapping.js';
 import { state, CONFIG, persist, restoreJson } from './js/state.js';
-import { genderOf, orderIndex } from './js/meta.js';
+import { genderOf, orderIndex, isLive } from './js/meta.js';
+import { changedMatchIds } from './js/live-select.js';
 import { renderStandings } from './js/views/standings-view.js';
 import { renderBracket } from './js/views/bracket-view.js';
 import { renderMatches } from './js/views/matches-view.js';
 import { renderCards } from './js/views/cards-view.js';
+import { renderLive } from './js/views/live-view.js';
 import { initPwa } from './js/pwa.js';
+import { initMatchDetail, refreshMatchDetail } from './js/match-detail.js';
 
 const $ = (id) => document.getElementById(id);
 
 const TABS = [
+  ['tabLive', 'live', 'liveView'],
   ['tabStandings', 'standings', 'standingsView'],
   ['tabBracket', 'bracket', 'bracketView'],
   ['tabMatches', 'matches', 'matchesView'],
@@ -71,10 +77,12 @@ function setView(view) {
     tab.setAttribute("aria-selected", String(active));
     $(viewId).hidden = !active;
   }
+  document.querySelector(".category-bar").hidden = view === "live";
   renderActiveView();
 }
 
 function renderActiveView() {
+  if (state.activeView === "live") return renderLive();     // cross-category
   if (state.activeView === "cards") return renderCards();   // tournament-wide
   if (!state.activeCategory) return;
   if (state.activeView === "standings") renderStandings();
@@ -96,14 +104,25 @@ async function load(showSpin) {
     state.rules = rulesFromConfig(tournament.config);
     persist("fb_rules", state.rules);
 
-    // Cautions are optional — a failure here must not block the main
-    // standings/matches display.
-    const [cauR] = await Promise.allSettled([fetchCautions(matchIds)]);
+    // Cautions and referee assignments are optional — a failure here must
+    // not block the main standings/matches display.
+    const [cauR, refR] = await Promise.allSettled([
+      fetchCautions(matchIds),
+      fetchRefereeAssignments(matchIds),
+    ]);
     if (cauR.status === "fulfilled") {
       state.cautions = mapCautions(cauR.value);
       persist("fb_cautions", state.cautions);
     } else if (!state.cautions.length) {
       state.cautions = restoreJson('fb_cautions', []);
+    }
+    if (refR.status === "fulfilled") {
+      const referees = new Map();
+      for (const a of refR.value) {
+        if (!referees.has(a.match_id)) referees.set(a.match_id, []);
+        referees.get(a.match_id).push(a);
+      }
+      state.referees = referees;
     }
 
     applyData(matches);
@@ -124,7 +143,9 @@ async function load(showSpin) {
 
 function applyData(matches) {
   if (!matches.length) return;
+  const changed = changedMatchIds(state.matches, matches);
   state.matches = matches;
+  $("tabLiveDot").hidden = !state.matches.some(isLive);
 
   // Distinct categories in fetch order (already sorted by scheduled_time).
   const seen = new Set();
@@ -145,6 +166,18 @@ function applyData(matches) {
 
   renderCategories();
   renderActiveView();
+  refreshMatchDetail();
+  pulseChanged(changed);
+}
+
+function pulseChanged(ids) {
+  if (!ids.size) return;
+  for (const id of ids) {
+    document.querySelectorAll(`[data-match-id="${CSS.escape(String(id))}"]`).forEach((el) => {
+      el.classList.add('scored');
+      setTimeout(() => el.classList.remove('scored'), 1300);
+    });
+  }
 }
 
 function cacheData(matches) {
@@ -166,10 +199,12 @@ function updateHeaderHeight() {
 }
 
 initPwa();
+initMatchDetail();
 
 updateHeaderHeight();
 window.addEventListener('resize', updateHeaderHeight, { passive: true });
 
+$("tabLive").onclick = () => setView("live");
 $("tabStandings").onclick = () => setView("standings");
 $("tabBracket").onclick = () => setView("bracket");
 $("tabMatches").onclick = () => setView("matches");

@@ -44,14 +44,19 @@ export function renderMatches() {
     groups[idx.get(key)].items.push(m);
   }
 
-  host.innerHTML = groups.map((g) => `
+  const liveNow = list.filter(isLive);
+  const liveHtml = (state.matchFilter !== 'live' && liveNow.length)
+    ? `<div class="day-group"><div class="day-head">● Live</div>${liveNow.map((m) => matchCard(m)).join('')}</div>`
+    : '';
+
+  host.innerHTML = liveHtml + groups.map((g) => `
     <div class="day-group">
       <div class="day-head">${esc(g.day)}</div>
       ${g.items.map(matchCard).join("")}
     </div>`).join("");
 }
 
-export function matchCard(m) {
+export function matchCard(m, { showCategory = false } = {}) {
   const aWin = isFinished(m) && m.setsA > m.setsB;
   const bWin = isFinished(m) && m.setsB > m.setsA;
   const live = isLive(m);
@@ -64,9 +69,10 @@ export function matchCard(m) {
     : "";
 
   return `
-  <div class="match ${live ? "live" : ""}">
+  <div class="match ${live ? "live" : ""}" data-match-id="${esc(m.id)}" role="button" tabindex="0">
     <div class="match-top">
       <div class="match-meta">
+        ${showCategory ? `<span class="tag tag--cat">${esc(m.category)}</span>` : ""}
         <span>${esc(m.time)}</span>
         ${m.court ? `<span class="tag">Court ${esc(m.court)}</span>` : ""}
         <span class="tag">#${esc(m.nr)}</span>

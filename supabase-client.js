@@ -37,12 +37,22 @@ export async function fetchMatches(tournamentId) {
   return data;
 }
 
+export async function fetchRefereeAssignments(matchIds) {
+  if (!matchIds.length) return [];
+  const { data, error } = await client
+    .from('referee_assignments')
+    .select('match_id, role, referee:referee_id(name)')
+    .in('match_id', matchIds);
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchCautions(matchIds) {
   if (matchIds.length === 0) return [];
   const { data, error } = await client
     .from('player_events')
     .select(`
-      event_type, player_id,
+      event_type, player_id, match_id,
       player:player_id(family_name, given_name, jersey_number, team:team_id(name, category:category_id(name))),
       match:match_id(round_label)
     `)

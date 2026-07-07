@@ -44,6 +44,7 @@ export function mapMatch(row) {
   }
 
   return {
+    id: row.id,
     day, time,
     nr: row.sheet_match_nr || row.id.slice(0, 8),
     court: row.court?.name || '',
@@ -80,7 +81,7 @@ export function mapCautions(rows) {
     const p = players.get(r.player_id);
     const key = r.event_type === 'Y' ? 'y' : r.event_type === 'YR' ? 'yr' : 'r';
     p[key]++;
-    p.events.push({ game: r.match?.round_label || '', type: r.event_type });
+    p.events.push({ game: r.match?.round_label || '', type: r.event_type, matchId: r.match_id ?? null });
   }
   return [...players.values()];
 }
